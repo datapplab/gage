@@ -1,0 +1,504 @@
+%\VignetteIndexEntry{RNA-Seq Data Pathway and Gene-set Analysis Workflows}
+%\VignetteDepends{pathview, gageData, Rsamtools, TxDb.Hsapiens.UCSC.hg19.knownGene, DESeq, DESeq2, edgeR, limma}
+%\VignettePackage{gage}
+
+\documentclass[11pt]{article}
+
+\usepackage{times}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{longtable}
+\usepackage[cm]{fullpage}
+\usepackage[pdftex]{graphicx}
+\usepackage[authoryear,round]{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\SweaveOpts{keep.source=TRUE,eps=FALSE,pdf=TRUE,prefix=TRUE} 
+
+% R part
+\newcommand{\R}[1]{{\textsf{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{{\textit{#1}}}
+\newcommand{\Rclass}[1]{{\textit{#1}}}
+\newcommand{\Metas}[1]{{\texttt{#1}}}
+
+%float placement
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+
+\begin{document}
+\setkeys{Gin}{width=0.8\textwidth}
+\title{RNA-Seq Data Pathway and Gene-set Analysis Workflows}
+\author{Weijun Luo {\small(\href{mailto:luo\_weijun@yahoo.com}{luo\_weijun AT yahoo.com})}}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+In this tutorial, we describe the GAGE \citep{luo:etal:2009} /Pahview  \citep{luo:etal:2013} workflows on RNA-Seq data pathway analysis and gene-set analysis (or GSEA). We first cover a full workflow from reads counting, data preprocessing, gene set test, to pathway visualization \hyperref[sec:nativeWorkflow]{Section \ref*{sec:nativeWorkflow}}. It is called the native workflow, because GAGE/Pahview provides most functionality for the high level analysis. The same workflow can be used for GO analysis and other types of gene set (enrichment) analyses \hyperref[sec:go]{Section \ref*{sec:go}}, and can have different choices of input per gene scores \hyperref[sec:genescore]{Section \ref*{sec:genescore}}. GAGE and Pahview are versatile tools. They can take the output from all the major RNA-Seq analysis tools and carry on for pathway analysis or visualization. In \hyperref[sec:joint]{Section \ref*{sec:joint}}, we also describe joint pathway analysis workflows with common RNA-Seq analysis tools. All these workflows are essentially implemented in R/Bioconductor.
+
+The workflows cover the most common situations and issues for RNA-Seq data pathway analysis. Issues like data quality assessment are relevant for data analysis in general yet out the scope of this tutorial. Although we focus on RNA-Seq data here, but pathway analysis workflow remains similar for microarray, particularly step \hyperref[subsec:step3]{3}-\hyperref[subsec:step4]{4} would be the same. Please check \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/gage.pdf}{\Rpackage{gage}} and \href{http://bioconductor.org/packages/devel/bioc/vignettes/pathview/inst/doc/pathview.pdf}{\Rpackage{pathview}} vigenttes for details.
+
+Note \href{https://pathview.uncc.edu/}{the Pathview Web server} provides a generic yet comprehensive workflow for both regular and integrated pathway analysis of multiple omics data \citep{luo:etal:2017}, as shown in \href{https://pathview.uncc.edu/example4}{Example 4 online}. 
+
+\section{Cite our work}
+
+Weijun Luo, Michael Friedman, Kerby Shedden, Kurt Hankenson, and Peter Woolf. GAGE: generally applicable gene set enrichment for pathway analysis. BMC Bioinformatics, 2009. \href{http://www.biomedcentral.com/1471-2105/10/161}{doi:10.1186/1471-2105-10-161}.
+\\
+\\
+Weijun Luo and Cory Brouwer. Pathview: an R/Bioconductor package for pathway-based data integration and visualization. Bioinformatics, 29(14):1830-1831, 2013. \href{http://bioinformatics.oxfordjournals.org/content/29/14/1830.full}{doi: 10.1093/bioinformatics/btt285}.
+
+\section{Quick start: RNA-Seq pathway analysis in about 40 lines}
+\label{sec:quick}
+This is the concise version, please check the full version workflow below for details.
+
+<<synopsis0, echo=TRUE,  eval=FALSE>>=
+##step 0: setup (also need to map the reads outside R)
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install(c("pathview", "gage", "gageData", "GenomicAlignments",
+            "TxDb.Hsapiens.UCSC.hg19.knownGene"))
+@ 
+
+<<synopsis1, echo=TRUE,  eval=FALSE>>=
+##step 1: read counts
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+exByGn <- exonsBy(TxDb.Hsapiens.UCSC.hg19.knownGene, "gene")
+library(GenomicAlignments)
+fls <- list.files("tophat_all/", pattern="bam$", full.names =T)
+bamfls <- BamFileList(fls)
+flag <- scanBamFlag(isSecondaryAlignment=FALSE, isProperPair=TRUE)
+param <- ScanBamParam(flag=flag)
+gnCnt <- summarizeOverlaps(exByGn, bamfls, mode="Union",
+             ignore.strand=TRUE, singleEnd=FALSE, param=param)
+hnrnp.cnts=assay(gnCnt)
+@ 
+
+<<synopsis2, echo=TRUE,  eval=FALSE>>=
+##step 2: preprocessing
+require(gageData) #demo only
+data(hnrnp.cnts) #demo only
+cnts=hnrnp.cnts
+sel.rn=rowSums(cnts) != 0
+cnts=cnts[sel.rn,]
+##joint workflow with DEseq/edgeR/limma/Cufflinks forks here
+libsizes=colSums(cnts)
+size.factor=libsizes/exp(mean(log(libsizes)))
+cnts.norm=t(t(cnts)/size.factor)
+cnts.norm=log2(cnts.norm+8)
+@ 
+
+<<synopsis3, echo=TRUE,  eval=FALSE>>=
+##step 3: gage
+##joint workflow with DEseq/edgeR/limma/Cufflinks merges around here
+library(gage)
+ref.idx=5:8
+samp.idx=1:4
+data(kegg.gs)
+cnts.kegg.p <- gage(cnts.norm, gsets = kegg.gs, ref = ref.idx,
+                    samp = samp.idx, compare ="unpaired")
+@ 
+
+<<synopsis4, echo=TRUE,  eval=FALSE>>=
+##step 4: pathview
+cnts.d= cnts.norm[, samp.idx]-rowMeans(cnts.norm[, ref.idx])
+sel <- cnts.kegg.p$greater[, "q.val"] < 0.1 &
+         !is.na(cnts.kegg.p$greater[,"q.val"])
+path.ids <- rownames(cnts.kegg.p$greater)[sel]
+sel.l <- cnts.kegg.p$less[, "q.val"] < 0.1 &
+           !is.na(cnts.kegg.p$less[,"q.val"])
+path.ids.l <- rownames(cnts.kegg.p$less)[sel.l]
+path.ids2 <- substr(c(path.ids, path.ids.l), 1, 8)
+library(pathview)
+pv.out.list <- sapply(path.ids2, function(pid) pathview(
+                      gene.data = cnts.d, pathway.id = pid,
+                      species = "hsa"))
+@
+
+\section{The native workflow}
+\label{sec:nativeWorkflow}
+This workflow is native to GAGE/Pathview and takes the full advantage of their special design  \citep{luo:etal:2009} \citep{luo:etal:2013}. The gene expression and pathway level analysis are done using the default setting of the tools, i.e. pair-wise comparison and single sample analysis \citep{luo:etal:2009}. Therefore, this workflow has no limitation on sample size or experimental design. In addition, you can analyze and visualize pathway changes in every single experiment or sample (\hyperref[fig:2]{Figure \ref*{fig:2}}). The test statistics are summarized across samples at pathway level instead of gene level \citep{luo:etal:2009}. The analysis results are more sensitive, informative and consistent than the latter approach.
+
+
+\subsection{Preparation: read mapping and package installation}
+\label{subsec:step0}
+This preparation step is not part of the RNA-Seq data pathway analysis workflow literally. But we have to go through these tasks to prepare for the analysis. 
+
+
+The raw reads data in zipped FASTQ format were downloaded from  \href{http://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-1147/}{ArrayExpress website}. This is the example data used in the  at the RNA-Seq section of the \href{http://www.bioconductor.org/help/course-materials/2013/SeattleMay2013/}{R/Bioconductor NGS course}. They worked with reads mapped to chromosome 14 only, here we work with all reads/genes for a practical pathway analysis.
+
+We use TopHat2 to map the raw reads to the reference human genome (hg19). And then use SAMtools to index the mapped reads. \href{http://ccb.jhu.edu/software/tophat/tutorial.shtml}{Tophat webpage} describes how to install TopHat and SAMtools, prepare the reference genome and use these tools. As an example, below is the code I used to map, index and process the read data for the first sample (ERR127302). You can write a shell script to do so for all samples (ERR127302-9). This step takes a couple of hours on a 8-core processor for each sample. You may run parallel jobs for multiple samples if you have access to HPC.
+\begin{verbatim}
+tophat2 -p 8 -o tophat_out_1 ref/hg19 ERR127302_1.fastq.gz ERR127302_2.fastq.gz
+cd tophat_out_1
+samtools index accepted_hits.bam
+mkdir -p tophat_all
+ln -s tophat_out_1/accepted_hits.bam tophat_all/ERR127302.bam
+ln -s tophat_out_1/accepted_hits.bam.bai tophat_all/ERR127302.bam.bai
+\end{verbatim}
+
+The pathway analysis workflow is implemented all in R/Bioconductor. You need to install the relevant packages within R if you haven't done so, you will need to work with \textbf{R 3.0 and Bioconductor 2.13 or newer versions}. Note that \Rpackage{gageData} provides the demo RNA-Seq data and ready-to-use KEGG and GO gene set data. The installation may take a few minutes. From this  point on, we are working fully under R excpet noted otherwise. Of course, you need to start R first. 
+
+<<start, echo=FALSE>>=
+options(width=80)
+@ 
+
+<<install, echo=TRUE, eval=FALSE>>=
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install(c("pathview", "gage", "gageData", "GenomicAlignments",
+            "TxDb.Hsapiens.UCSC.hg19.knownGene"))
+@ 
+
+Besides these packages, you will also need to install one of \Rpackage{DESeq}, \Rpackage{DESeq2}, \Rpackage{edgeR}, \Rpackage{limma} and \Metas{Cufflinks} (non-Bioconductor) if you want to use the joint workflow described in \hyperref[sec:joint]{Section \ref*{sec:joint}}.
+
+And we are then ready for the pathway analysis workflow. The workflow has 4 distinct steps, and we describe each of them in details below.
+
+\subsection{Step 1: Count the reads mapped to each gene}
+\label{subsec:step1}
+In this step, we need to extract exon regions by gene (i.e. Annotation of known gene models). It is important to make sure that the gene annotation uses the same version and source of reference genome in the reads mapping step above, in our case, hg19. We then count and summarize the reads mapped to each known gene/exon regions using package \Rpackage{Rsamtools} (and \Rpackage{GenomicRanges}). Here, we used the files \verb@"accepted_hits.bam"@ in tophat output directories, which have been renamed after the sample names and collected in to the  \verb@"tophat_all"@ directory above. This step may take ten minutes or longer on a single-core cpu. You may use multiple cores if available.
+
+<<readcount, echo=TRUE, eval=FALSE>>=
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+exByGn <- exonsBy(TxDb.Hsapiens.UCSC.hg19.knownGene, "gene")
+library(GenomicAlignments)
+fls <- list.files("tophat_all/", pattern="bam$", full.names =T)
+bamfls <- BamFileList(fls)
+flag <- scanBamFlag(isSecondaryAlignment=FALSE, isProperPair=TRUE)
+param <- ScanBamParam(flag=flag)
+#to run multiple core option: library(parallel); options("mc.cores"=4)
+gnCnt <- summarizeOverlaps(exByGn, bamfls, mode="Union",
+             ignore.strand=TRUE, singleEnd=FALSE, param=param)
+hnrnp.cnts=assay(gnCnt)
+@ 
+
+\subsection{Step 2: Normalize and process read counts}
+\label{subsec:step2}
+We divide the read counts by the total number of mapped reads for each sample as to normalize over the library size and sequence depth. We don't count for the gene length because it will be cancelled out in the relative expression level for each gene. Genes with 0 counts across all samples are removed (either before or after normalization is the same). We add a small yet appropriate positive count number (+8) to all genes before doing log2 transformation, as to avoid -Inf and stablize the variance at low expression end. The \href{http://bioconductor.org/packages/release/bioc/html/DESeq.html}{\Rpackage{DEseq} package vignette} describes a sophisticated "Variance stabilizing transformation" in detail. We may do MA plot as to check the processed data variances using MA plot (\hyperref[fig:1]{Figure \ref*{fig:1}}). You may further do principle component analysis (PCA) plot to check the overall variances and similarity between samples (not shown).
+
+For this step on, we can actually work on the pre-mapped raw read counts data from steps aboved, i.e. hnrnp.cnts stored in \Rpackage{gageData}.
+\phantomsection
+\label{code:fork}
+<<preprocessing, echo=TRUE>>=
+require(gageData)
+data(hnrnp.cnts)
+cnts=hnrnp.cnts
+dim(cnts)
+sel.rn=rowSums(cnts) != 0
+cnts=cnts[sel.rn,]
+dim(cnts)
+libsizes=colSums(cnts)
+size.factor=libsizes/exp(mean(log(libsizes)))
+cnts.norm=t(t(cnts)/size.factor)
+range(cnts.norm)
+cnts.norm=log2(cnts.norm+8)
+range(cnts.norm)
+#optional MA plot
+pdf("hnrnp.cnts.maplots.pdf", width=8, height=10)
+op=par(lwd=2, cex.axis=1.5, cex.lab=1.5, mfrow=c(2,1))
+plot((cnts.norm[,6]+cnts.norm[,5])/2, (cnts.norm[,6]-cnts.norm[,5]), 
+main="(a) Control vs Control", xlab="mean", ylab="change",
+ylim=c(-5,5), xlim=c(0,20), lwd=1)
+abline(h=0, lwd=2, col="red", lty="dashed")
+plot((cnts.norm[,1]+cnts.norm[,5])/2, (cnts.norm[,1]-cnts.norm[,5]), 
+main="(b) Knockdown vs Control", xlab="mean", ylab="change",
+ylim=c(-5,5), xlim=c(0,20), lwd=1)
+abline(h=0, lwd=2, col="red", lty="dashed")
+dev.off()
+@ 
+
+
+\begin{figure} 
+\begin{center} 
+\includegraphics[width=16.5cm,type=pdf,ext=.pdf,read=.pdf]{hnrnp.cnts.maplots}
+\caption{MA plots on processed gene-wise read counts.}
+\label{fig:1}
+\end{center}  
+\end{figure} 
+
+
+\subsection{Step 3: Gene set test with GAGE}
+\label{subsec:step3}
+Here, we do gene set test to select the signficantly perturbed KEGG pathways using GAGE \citep{luo:etal:2009}. For more information on GAGE analysis please check the \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/gage.pdf}{main \Rpackage{gage} vignette} and the paper  \citep{luo:etal:2009}. You may also explore advanced GAGE analysis options and view the gene-level perturbations using heatmaps or scatter plot (\hyperref[fig:3]{Figure \ref*{fig:3}}) or pathway-level perturbations using heatmaps (Figure 1 in the \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/gage.pdf}{main vignette}). Below we only do one directional tests, but you may also consider two directional tests as described in the \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/gage.pdf}{main \Rpackage{gage} vignette}.
+<<gage, echo=TRUE>>=
+library(gage)
+ref.idx=5:8
+samp.idx=1:4
+data(kegg.gs)
+#knockdown and control samples are unpaired
+cnts.kegg.p <- gage(cnts.norm, gsets = kegg.gs, ref = ref.idx,
+                    samp = samp.idx, compare ="unpaired")
+@ 
+
+\subsection{Step 4: Pathway visualization with Pathview}
+\label{subsec:step4}
+We then visualize the gene expression perturbations in significant KEGG pathways using Pathview (\hyperref[fig:2]{Figure \ref*{fig:2}}). For more information on Pathview please check the \href{http://bioconductor.org/packages/release/bioc/vignettes/pathview/inst/doc/pathview.pdf}{main \Rpackage{pathview} vignette} and the paper  \citep{luo:etal:2013}.
+<<pathview, echo=TRUE>>=
+#differential expression: log2 ratio or fold change, uppaired samples
+cnts.d= cnts.norm[, samp.idx]-rowMeans(cnts.norm[, ref.idx])
+
+#up-regulated pathways (top 3) visualized by pathview
+sel <- cnts.kegg.p$greater[, "q.val"] < 0.1 &
+         !is.na(cnts.kegg.p$greater[,"q.val"])
+path.ids <- rownames(cnts.kegg.p$greater)[sel]
+path.ids2 <- substr(path.ids, 1, 8)
+library(pathview)
+pv.out.list <- sapply(path.ids2[1:3], function(pid) pathview(
+                      gene.data = cnts.d, pathway.id = pid,
+                      species = "hsa"))
+
+#down-regulated pathways  (top 3) visualized by pathview
+sel.l <- cnts.kegg.p$less[, "q.val"] < 0.1 &
+           !is.na(cnts.kegg.p$less[,"q.val"])
+path.ids.l <- rownames(cnts.kegg.p$less)[sel.l]
+path.ids.l2 <- substr(path.ids.l, 1, 8)
+pv.out.list.l <- sapply(path.ids.l2[1:3], function(pid) pathview(
+                      gene.data = cnts.d, pathway.id = pid,
+                      species = "hsa"))
+@ 
+
+
+\setlength\fboxsep{0pt}
+\setlength\fboxrule{0.5pt}
+\begin{figure}
+        \centering
+        \begin{subfigure}[b]{1.0\textwidth}
+                \centering
+                \fbox{\includegraphics[width=14cm,type=png,ext=.png,read=.png]{hsa03013.pathview.multi}}
+                \caption{}
+                \label{fig:2a}
+        \end{subfigure}
+        \\
+        \vspace{20pt}
+        \begin{subfigure}[b]{1.0\textwidth}
+                \centering
+                \fbox{\includegraphics[width=12cm,type=png,ext=.png,read=.png]{hsa04512.pathview.multi}}
+                \caption{}
+                \label{fig:2b}
+        \end{subfigure}
+        \\
+        \caption{Expression perturbations in signficant pathways visualized by Pathview (a) hsa03013 RNA transport; or (b) hsa04512 ECM-receptor interaction.}
+        \label{fig:2}
+\end{figure}
+
+\section{GO analysis and other gene set analyses}
+\label{sec:go}
+GAGE's capability for GO analysis and other types of gene set analyses has long been under-appreciated partially because we always use the term "pathway analysis" \citep{luo:etal:2009}. We have demonstrate the RNA-Seq data workflow with KEGG pathway analysis above, as well as in the \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/gage.pdf}{main \Rpackage{gage} vignette}. GAGE is equally well applicable for GO analysis and other gene set analyses \citep{luo:etal:2009}. In fact, the Biological Process terms have similar definitions to KEGG pathways. GAGE analysis on Biological Process could be even more informative as it includes more comprehensive and detailed pathway/process definition.
+
+<<goanalysis, echo=TRUE>>=
+library(gageData)
+data(go.sets.hs)
+data(go.subs.hs)
+lapply(go.subs.hs, head)
+#Molecular Function analysis is quicker, hence run as demo
+cnts.mf.p <- gage(cnts.norm, gsets = go.sets.hs[go.subs.hs$MF], 
+    ref = ref.idx, samp = samp.idx, compare ="unpaired")
+#Biological Process analysis takes a few minutes if you try it
+#cnts.bp.p <- gage(cnts.norm, gsets = go.sets.hs[go.subs.hs$BP], 
+#    ref = ref.idx, samp = samp.idx, compare ="unpaired")
+@ 
+
+GO definition doesn't included molecular interactions hence not able to visulize like KEGG pathway graphs (\hyperref[fig:2]{Figure \ref*{fig:2}}). However, you may check the gene expression patterns in signficant GO terms using \Rpackage{gage}'s \R{geneData} function (\hyperref[fig:3]{Figure \ref*{fig:3}}).
+<<goresults, echo=TRUE>>=
+for (gs in rownames(cnts.mf.p$less)[1:3]) {
+    outname = gsub(" |:|/", "_", substr(gs, 12, 100))
+    geneData(genes = go.sets.hs[[gs]], exprs = cnts.norm, ref = ref.idx, 
+        samp = samp.idx, outname = outname, txt = T, heatmap = T, 
+        limit = 3, scatterplot = T)
+}
+@ 
+
+
+\setlength\fboxsep{0pt}
+\setlength\fboxrule{0.5pt}
+\begin{figure}
+        \centering
+        \begin{subfigure}[b]{1.0\textwidth}
+                \centering
+                \includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf]{extracellular_matrix_binding.geneData.heatmap}
+                \caption{}
+                \label{fig:3a}
+        \end{subfigure}
+        \\
+        \vspace{20pt}
+        \begin{subfigure}[b]{1.0\textwidth}
+                \centering
+                \includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf]{extracellular_matrix_binding.geneData}
+                \caption{}
+                \label{fig:3b}
+        \end{subfigure}
+        \\
+        \caption{Expression perturbations in a signficant GO MF terms, "GO:0050840 extracellular matrix binding", visualized by (a) heatmap with dendrograms; and (b) scatter plot.}
+        \label{fig:3}
+\end{figure}
+
+
+\section{Per gene score choices}
+\label{sec:genescore}
+GAGE does pair-wise comparison between samples by default \citep{luo:etal:2009}, which makes GAGE applicable for arbitrary sample sizes or columan numbers (from 1 to many), and more sensitive than other methods. In other words, GAGE uses sample wise fold change as per gene score/statistics in gene set test. However, per gene scores from group wise comparison including mean fold change, t-stats, f-stats, correlation (with quantitative phenotypes/traits), etc can all be used with GAGE. We demonstrate GAGE analysis with mean fold change and t-stats as input below. But t-stats are not recommended here because of the small sample size (4). Nontheless, the selected top gene sets or pathways are similar to results from the main workflow above.
+<<pergenescore, echo=TRUE>>=
+cnts.t= apply(cnts.norm, 1, function(x) t.test(x[samp.idx], x[ref.idx],
+              alternative = "two.sided", paired = F)$statistic)
+cnts.meanfc= rowMeans(cnts.norm[, samp.idx]-cnts.norm[, ref.idx])
+range(cnts.t)
+range(cnts.meanfc)
+cnts.t.kegg.p <- gage(cnts.t, gsets = kegg.gs, ref = NULL, samp = NULL)
+cnts.meanfc.kegg.p <- gage(cnts.meanfc, gsets = kegg.gs, ref = NULL, samp = NULL)
+@ 
+
+\section{Joint workflows with common RNA-Seq analysis tools}
+\label{sec:joint}
+Currently, the most common RNA-Seq data analysis tools include \Rpackage{DESeq}  \citep{anders:etal:2010}, \Rpackage{DESeq2} \citep{love:etal:2014}, \Rpackage{edgeR} \citep{robinson:etal:2010}, \Rpackage{Limma} \citep{smyth:2004} and \Metas{Cufflinks} \citep{trapnell:etal:2012}. Many users are already familiar with them, and countless analyses have been done and published using them. All these tools except \Metas{Cufflinks} are implemented in R/Bioconductor. It is very convenient to combine these tools with GAGE/Pahview for joint pathway analysis workflows. In other words, these tools do differential expression analysis first, and GAGE/Pahview then takes their results for pathway or gene set analysis. Compared to the native workflow in \hyperref[sec:nativeWorkflow]{Section \ref*{sec:nativeWorkflow}} above, these tools essentially make a detour starting in step 2 and ending at step 3 (replacing the internal data preparation of GAGE). Other steps, i.e. preparation and step 1 and 4 largely remain the same. Below are example workflows with each one of these analysis tools.
+
+Notice the all of these tools output fold change (log ratio). Some of them, including \Rpackage{Limma} and \Metas{Cufflinks}, also output test-statistics. Below we will use fold changes for all workflows. But test-statistics can still be used, particularly for well designed experiments with sufficient sample size. We will show a complete pathway analysis workflow with \Rpackage{DESeq2}. For all other tools, our demos only include the upstream different expression analysis with fold change results, because the downstream GAGE/Pathview steps remain the same.
+
+
+\subsection{DESeq2}
+\label{subsec:DESeq2}
+DESeq has two versions in Bioconductor, \Rpackage{DEseq} and \Rpackage{DESeq2}. The latter is preferred. It is faster and simpler, more importantly the fold change values are cleaner and more sensible, i.e. no \R{-Inf} or \R{Inf} values.
+
+First, \Rpackage{DESeq2} for differential expression analysis. Here we assume that we have gone through the earlier steps till the fork point right after the code line \R{cnts=cnts[sel.rn,]} in the \hyperref[code:fork]{native workflow} above.
+<<deseq2, echo=TRUE>>=
+library(DESeq2)
+grp.idx <- rep(c("knockdown", "control"), each=4)
+coldat=DataFrame(grp=factor(grp.idx))
+dds <- DESeqDataSetFromMatrix(cnts, colData=coldat, design = ~ grp)
+dds <- DESeq(dds)
+deseq2.res <- results(dds)
+#direction of fc, depends on levels(coldat$grp), the first level
+#taken as reference (or control) and the second one as experiment.
+deseq2.fc=deseq2.res$log2FoldChange
+names(deseq2.fc)=rownames(deseq2.res)
+exp.fc=deseq2.fc
+out.suffix="deseq2"
+@ 
+
+Next, GAGE for pathway analysis, and Pathview for visualization. We only visualize up-regulated pathways here, down-regulated pathways can be done the same way (see also the above native workflow). Notice that this step (the same code) is identical for \Rpackage{DESeq}, \Rpackage{edgeR}, \Rpackage{Limma} and \Metas{Cufflinks} workflows, hence skipped in other workflows below.
+
+\phantomsection
+\label{code:merge}
+<<deseq2, echo=TRUE>>=
+require(gage)
+data(kegg.gs)
+fc.kegg.p <- gage(exp.fc, gsets = kegg.gs, ref = NULL, samp = NULL)
+sel <- fc.kegg.p$greater[, "q.val"] < 0.1 &
+        !is.na(fc.kegg.p$greater[, "q.val"])
+path.ids <- rownames(fc.kegg.p$greater)[sel]
+sel.l <- fc.kegg.p$less[, "q.val"] < 0.1 &
+           !is.na(fc.kegg.p$less[,"q.val"])
+path.ids.l <- rownames(fc.kegg.p$less)[sel.l]
+path.ids2 <- substr(c(path.ids, path.ids.l), 1, 8)
+require(pathview)
+#view first 3 pathways as demo
+pv.out.list <- sapply(path.ids2[1:3], function(pid) pathview(
+                      gene.data =  exp.fc, pathway.id = pid,
+                      species = "hsa", out.suffix=out.suffix))
+@ 
+
+Here we used GAGE to infer the signficant pathways. But we are not limited to these pathways. We can use Pathview to visualize RNA-Seq data (\R{exp.fc} here) on all interesting pathways directly. We may also do GO and other types of gene set analysis as described in \hyperref[sec:go]{native workflow} above.
+
+\subsection{DESeq}
+\label{subsec:DESeq}
+DEseq analysis is bit lengthier and slower, although it is still a most used RNA-Seq analysis tool in Bioconductor. Note that we need to remove the \R{-Inf} or \R{Inf} values in the fold changes.
+
+Here we assume that we have gone through the earlier steps till the fork point right after the code line \R{cnts=cnts[sel.rn,]} in the \hyperref[code:fork]{native workflow} above.
+<<deseq, echo=TRUE, eval=FALSE>>=
+library(DESeq)
+grp.idx <- rep(c("knockdown", "control"), each=4)
+cds <- newCountDataSet(cnts, grp.idx)
+cds = estimateSizeFactors(cds)
+cds = estimateDispersions(cds)
+#this line takes several minutes
+system.time(
+deseq.res <- nbinomTest(cds, "knockdown", "control")
+)
+deseq.fc=deseq.res$log2FoldChange
+names(deseq.fc)=deseq.res$id
+sum(is.infinite(deseq.fc))
+deseq.fc[deseq.fc>10]=10
+deseq.fc[deseq.fc< -10]=-10
+exp.fc=deseq.fc
+out.suffix="deseq"
+@ 
+
+The following GAGE and Pathview steps remain the same as in  \hyperref[code:merge]{Subsection DESeq2}. You may also carry out GO and other gene set analyses as decribed in the \hyperref[sec:go]{native workflow}.
+
+\subsection{edgeR}
+\label{subsec:edgeR}
+The \Rpackage{edgeR} package is another most used and the earliest RNA-Seq analysis tool in Bioconductor. It is probably the first one using negative binomial distribution to model RNA-Seq data \citep{robinson:etal:2010}.
+
+Here we assume that we have gone through the earlier steps till the fork point right after the code line \R{cnts=cnts[sel.rn,]} in the \hyperref[code:fork]{native workflow} above.
+<<edger, echo=TRUE>>=
+library(edgeR)
+grp.idx <- rep(c("knockdown", "control"), each=4)
+dgel <- DGEList(counts=cnts, group=factor(grp.idx))
+dgel <- calcNormFactors(dgel)
+dgel <- estimateCommonDisp(dgel)
+dgel <- estimateTagwiseDisp(dgel)
+et <- exactTest(dgel)
+edger.fc=et$table$logFC
+names(edger.fc)=rownames(et$table)
+exp.fc=edger.fc
+out.suffix="edger"
+@ 
+
+The following GAGE and Pathview steps remain the same as in  \hyperref[code:merge]{Subsection DESeq2}. You may also carry out GO and other gene set analyses as decribed in the \hyperref[sec:go]{native workflow}.
+
+\subsection{Limma}
+\label{subsec:Limma}
+\Rpackage{Limma} is the most used expression data analysis tool and a most downloaded package in Bioconductor. It is best known for microarray analysis, but RNA-Seq data analysis has also been implemented recently. Note that \Rpackage{edgeR} package is needed here too.
+
+Here we assume that we have gone through the earlier steps till the fork point right after the code line \R{cnts=cnts[sel.rn,]} in the \hyperref[code:fork]{native workflow} above.
+<<limma, echo=TRUE>>=
+library(edgeR)
+grp.idx <- rep(c("knockdown", "control"), each=4)
+dgel2 <- DGEList(counts=cnts, group=factor(grp.idx))
+dgel2 <- calcNormFactors(dgel2)
+library(limma)
+design <- model.matrix(~grp.idx)
+log2.cpm <- voom(dgel2,design)
+fit <- lmFit(log2.cpm,design)
+fit <- eBayes(fit)
+limma.res=topTable(fit,coef=2,n=Inf,sort="p")
+limma.fc=limma.res$logFC
+names(limma.fc)=limma.res$ID
+exp.fc=limma.fc
+out.suffix="limma"
+@ 
+
+The following GAGE and Pathview steps remain the same as in  \hyperref[code:merge]{Subsection DESeq2}. You may also carry out GO and other gene set analyses as decribed in the \hyperref[sec:go]{native workflow}.
+
+\subsection{Cufflinks}
+\label{subsec:Cufflinks}
+\Metas{Cufflinks} is a most popular RNA-Seq analysis tool. It is developed by the same group as TopHat. It is implemented independent of Bioconductor. However, we can read its gene differential expression analysis results into R easily. The result file is named \verb@gene_exp_diff@, and here is the description is provided on \href{http://cole-trapnell-lab.github.io/cufflinks/cuffdiff/index.html#differential-expression-tests}{Cufflinks webpage}. Notice that the gene sybmols need to converted to Entrez Gene IDs, which are used in KEGG pathways (many research species) and GO gene sets.
+
+<<cufflinks, echo=TRUE, eval=FALSE>>=
+cuff.res=read.delim(file="gene_exp.diff", sep="\t")
+#notice the column name special character changes. The column used to be
+#cuff.res$log2.fold_change. for older versions of Cufflinks.
+cuff.fc=cuff.res$log2.FPKMy.FPKMx. 
+gnames=cuff.res$gene
+sel=gnames!="-"
+gnames=as.character(gnames[sel])
+cuff.fc=cuff.fc[sel]
+names(cuff.fc)=gnames
+gnames.eg=pathview::id2eg(gnames, category ="symbol")
+sel2=gnames.eg[,2]>""
+cuff.fc=cuff.fc[sel2]
+names(cuff.fc)=gnames.eg[sel2,2]
+range(cuff.fc)
+cuff.fc[cuff.fc>10]=10
+cuff.fc[cuff.fc< -10]=-10
+exp.fc=cuff.fc
+out.suffix="cuff"
+@ 
+
+The following GAGE and Pathview steps remain the same as in  \hyperref[code:merge]{Subsection DESeq2}. You may also carry out GO and other gene set analyses as decribed in the \hyperref[sec:go]{native workflow}.
+
+\bibliographystyle{plainnat}
+\bibliography{gage}
+
+\end{document}

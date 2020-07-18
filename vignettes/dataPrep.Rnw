@@ -1,0 +1,131 @@
+%\VignetteIndexEntry{Gene set and data preparation}
+%\VignetteDepends{pathview, gageData, hgu133a.db}
+%\VignettePackage{gage}
+
+\documentclass[11pt]{article}
+
+\usepackage{times}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{longtable}
+\usepackage[pdftex]{graphicx}
+\usepackage[authoryear,round]{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
+\SweaveOpts{keep.source=TRUE,eps=FALSE,pdf=TRUE,prefix=TRUE} 
+
+% R part
+\newcommand{\R}[1]{{\textsf{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{{\textit{#1}}}
+\newcommand{\Rclass}[1]{{\textit{#1}}}
+\newcommand{\Metas}[1]{{\texttt{#1}}}
+
+%float placement
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+
+\begin{document}
+\setkeys{Gin}{width=0.8\textwidth}
+\title{Gene set and data preparation}
+\author{Weijun Luo {\small(\href{mailto:luo\_weijun@yahoo.com}{luo\_weijun AT yahoo.com})}}
+
+\maketitle
+
+\section{Introduction}
+In this short tutorial, we cover a few practical issues we frequently come cross in GAGE \citep{luo:etal:2009} and other types of gene set analysis. These issues include: gene set and expression data input, probe set ID, transcript and gene ID conversion. This tutorial is written for those who are less familiar with R/Bioconductor basics. If you still have difficulties and you don't need to work on pathways or gene sets other than KEGG, you may use the \href{https://pathview.uncc.edu/}{Pathview Web server: pathview.uncc.edu}. \href{https://pathview.uncc.edu/}{The server} implemented GAGE based pathway analysis and Pathview based data visualization in \href{https://pathview.uncc.edu/example4}{a comprehensive pathway analysis workflow}. Please check \href{https://pathview.uncc.edu/overview}{the overview page} and \href{https://academic.oup.com/nar/article-lookup/doi/10.1093/nar/gkx372}{the NAR web server paper} \citep{luo:etal:2017} for details.
+
+
+First we get started as decribed in the main vignette. Under R, first we load the \Rpackage{gage} package:
+<<start, echo=FALSE>>=
+options(width=80)
+@ 
+
+<<start, echo=TRUE>>=
+library(gage)
+@ 
+
+\section{Expression data input}
+The gage package provides dedicated functions for data input, partically reading in the experimental or gene expression data and gene set data. First, let's look at how to read in a gene expression dataset in tab-deliminated text format. You may open it in Excel for a better view. Now that genes are rows and samples are columns.
+<<demo.data, echo=TRUE>>=
+filename=system.file("extdata/gse16873.demo", package = "gage")
+demo.data=readExpData(filename, row.names=1)
+#check the data
+head(demo.data)
+str(demo.data)
+#convert the data.frame into a matrix as to speed up the computing
+demo.data=as.matrix(demo.data)
+str(demo.data)
+@ 
+
+Then it is ready for running GAGE analysis on \R{demo.data}. Please check the main vignette: \verb@Generally Applicable Gene-set/Pathway Analysis@, for details. Please do not actually run GAGE analysis on \R{demo.data} as it only has 100 genes, too few for any meaningful analysis.
+
+\section{Gene set data input}
+We may download gene set definitation from third-party databases like MSigDB in "GMT" format, or we may prepare our own gene set data in that format. Please check file "c2.demo.gmt" in the "extdata" folder for details. We may read in such gene set data using \R{readList} function. You may also modify the function to accomodate your own gene set data format.
+<<readList, echo=TRUE>>=
+#an example GMT gene set data derived from MSigDB data
+filename=system.file("extdata/c2.demo.gmt", package = "gage")
+demo.gs=readList(filename)
+demo.gs[1:3]
+#to use these gene sets with gse16873, need to convert the gene symbols
+#to Entrez IDs first
+data(egSymb)
+demo.gs.sym<-lapply(demo.gs, sym2eg)
+demo.gs.sym[1:3]
+@ 
+
+\section{Probe set ID conversion}
+Gene set or pathway analysis requires that gene sets and expression data use the same type of gene ID (Entrez Gene ID, Gene symbol or probe set ID etc). However, this is frequently not true for the data we have. For example, our gene sets mostly use Entrez Gene ID, but microarray datasets are frequently labeled by probe set ID (or RefSeq transcript ID etc). Therefore, we need to convert or map the probe set IDs to Entrez gene ID. The support data package \Rpackage{gageData} (the latest version: >= 2.0.0)provides a example microarray dataset with Affymetrix probe set IDs (labels with \verb@_at@ suffix), which are seen in most Afymetrix microarray datasets. From GEO GSE16873 record page or the CEL data file, we know that it uses Affymetrix Human Genome U133A Array. We need to use the corresponding Bioconductor annotation package, hgu133a.db. Of course, you need to have that installed first.
+
+<<gse16873.affyid, echo=TRUE>>=
+library(gageData)
+data(gse16873.affyid)
+affyid=rownames(gse16873.affyid)
+
+library(hgu133a.db)
+egids2=hgu133aENTREZID[affyid]
+annots=toTable(egids2)
+str(annots)
+gse16873.affyid=gse16873.affyid[annots$probe_id,]
+
+#if multiple probe sets map to a gene, select the one with maximal IQR
+iqrs=apply(gse16873.affyid, 1, IQR)
+sel.rn=tapply(1:nrow(annots), annots$gene_id, function(x){
+x[which.max(iqrs[x])]
+})
+gse16873.egid=gse16873.affyid[sel.rn,]
+rownames(gse16873.egid)=names(sel.rn)
+
+cn=colnames(gse16873.egid)
+hn=grep('HN',cn, ignore.case =T)
+dcis=grep('DCIS',cn, ignore.case =T)
+data(kegg.gs)
+gse16873.kegg.p.affy <- gage(gse16873.egid, gsets = kegg.gs,
+    ref = hn, samp = dcis)
+#result should be similar to that of using gse16873
+@ 
+
+\section{gene or transcript ID conversion}
+Frequently, we need to convert other types of gene/transcript IDs to Entrez Gene ID or the reverse. The \Rpackage{gage} package provides functions \R{eg2sym} and \R{sym2eg} for such ID conversions on human genes, which uses a integrated ID mapping matrix, to access it do: \R{data(egSymb); head(egSymb)}.  The \Rpackage{pathview} package \citep{luo:etal:2013} provides two more comprehensive functions: \R{eg2id} and \R{id2eg}, which make use of the Bioconductor gene annotation packages or similar custom annotation pakages. These functions not only cover the latest gene annotations but also convert gene IDs for many common model organisms, for a list of model organisms and corresponding  Bioconductor gene annotation packages, check \R{data(bods)} as below. These functions derive a ID mapping matrix, which then can be used to map the data in a seperate step because multiple transcript ID may map to the same Entrez Gene ID.
+
+<<pathview.conversion, echo=TRUE>>=
+library(pathview)
+data(bods)
+print(bods)
+#simulated human expression data with RefSeq ID
+refseq.data <- sim.mol.data(mol.type = "gene", id.type = "REFSEQ",
+                nexp = 2, nmol = 1000)
+#construct map between non-Entrez ID and Entrez Gene ID
+id.map.refseq <- id2eg(ids = rownames(refseq.data), category =
+                   "REFSEQ", org = "Hs")
+#Map data onto Entrez Gene IDs, note different sum.method can be used
+entrez.data <- mol.sum(mol.data = refseq.data, id.map = id.map.refseq,
+                   sum.method = "mean")
+@ 
+
+\bibliographystyle{plainnat}
+\bibliography{gage}
+
+\end{document}

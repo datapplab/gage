@@ -1,0 +1,184 @@
+VERSION 2.39.3/2.38.3
+-------------
+  
+  o fixed warning on "library(GO.db)" in go.gsets.R. Now "import" from
+    GO.db, instead of "suggest" it. 
+
+VERSION 2.39.2/2.38.2
+-------------
+  
+  o fixed error caused by class(exprs) == "data.frame" in
+    gagePrep.R. class(exprs) now returns a vector of length 2, which
+    caused the error.
+
+VERSION 2.28.2
+-------------
+  
+  o korg now include 5245 KEGG species. In addition an updated version
+    of korg is now checked out from Pathview Web server by loading
+    .rda file (inst4ead of read .tsv file) when needed.
+
+VERSION 2.27.3/2.26.3
+-------------
+  
+  o fixed bug in kegg.gsets function, which cause error when
+    species="ko" (KEGG Orthology).
+
+VERSION 2.27.1/2.26.1
+-------------
+  
+  o major expansion in korg, which now include both KEGG and NCBI
+    taxonomy IDs, two more gene ID types, i.e. NCBI protein and uniprot
+    IDs. In addition, Entrez or NCBI Gene IDs are discontinued for most
+    prokaryotes.
+
+  o korg now include 4800 KEGG species, in the meantime, an updated
+    version of korg is now checked out from Pathview Web server each
+    R session when kegg.gsets function is called the first time.
+
+
+version	2.20.1
+-------------
+
+  o updated RNA-seq workflow vignette, especially step 1
+    summarizeOverlaps, and correct tophat web link.
+
+version	2.19.1
+-------------
+
+  o updated gage main vignette and RNA-seq workflow vignette. Add
+    reminder on species and gene ID data consistence check to the
+    former, and correct Cufflinks output format and web link.
+
+version	2.17.2
+-------------
+
+  o updated khier to included newly added reference pathways. kegg.gsets
+    can work with 397 pathways now.
+
+version	2.15.5
+-------------
+
+  o updated korg to included over 80 newly added species, such as
+    sheep, apple, mandarin orange etc. Pathview can work with 3050
+    species now.
+
+version	2.14.3
+-------------
+
+  o revised the internal function gs.heatmap as to allow margin sizes
+    ajustment for gene set heatmaps directly or through sigGeneSet.
+
+version	2.14.1
+-------------
+
+  o revised "RNA-Seq Data Pathway and Gene-set Analysis Workflows" to
+    reflect summarizeOverlaps() migration to GenomicAlignments package
+    for Bioc 2.14.
+
+version	2.13.5
+-------------
+
+  o add function go.gsets, which generates up-to-date GO gene sets for
+    19 common species annotated in Bioconductor and more others by the
+    users.
+
+version	2.13.3 (2.12.3)
+-------------
+
+  o updated korg to included over 600 newly added species. kegg.gsets
+    can work with 2970 species now.
+
+  o fixed typos in joint workflows with Cufflinks (page 13):
+    range(exp.fc) to range(cuff.fc)
+
+version	2.12.2
+-------------
+
+  o fixed typos in joint workflows with DESeq2 (page 11): cnts.kegg.p
+    should be fc.kegg.p
+
+version 2.12.1
+
+  o remove pathview from the imports list for easier installation and
+    loading.
+
+version 2.11.3
+
+  o add secondary vignette, "RNA-Seq Data Pathway and Gene-set
+    Analysis Workflows".
+
+  o add function kegg.gsets, which generates up-to-date KEGG pathway
+    gene sets for any specified KEGG species.
+
+version 2.9.4
+
+  o add secondary vignette, "Gene set and data preparation", on data
+    preparation.
+
+version 2.9.2
+
+  o suggests and connected to pathview package for results visualization.
+
+version 2.9.1
+
+  o removed dependency on multtest package for p-value FDR adjustment,
+    use p.adjust function of the stat package instead.
+
+  o change "depends" to "imports" for graph package as we only need to
+    import graphNEL class and connComp method.
+
+  o subset kegg.gs. From now, kegg.gs only include the subset of canonical
+    signaling and metabolic pathways from KEGG pathway database, and
+    kegg.gs.dise is the subset of disease pathways. And it is
+    recommended to do KEGG pathway analysis with either kegg.gs or
+    kegg.gs.dise seperately (rather than combined altogether) for
+    better defined results. Note that kegg.gs and subsets are be
+    defined slightly different in gageData package.
+
+  o In gage vignette, add citation section and an example of including all
+    genes (rather than those selected using essGene function) in top
+    gene set result check using geneData function.
+
+
+version 2.2.0
+
+  o More robust p-value summarization using Stouffer's method through
+    argument use.stouffer=TRUE. The original p-value summarization,
+    i.e. negative log sum following a Gamma distribution as the Null
+    hypothesis, may produce less stable global p-values for large or
+    heterogenous datasets. In other words, the global p-value could be
+    heavily affected by a small subset of extremely small individual
+    p-values from pair-wise comparisons. Such sensitive global p-value
+    leads to the "dual signficance" phenomenon. Dual-signficant means
+    a gene set is called significant simultaneously in both
+    1-direction tests (up- and down-regulated). "Dual signficance"
+    could be informative in revealing the sub-types or sub-classes in
+    big clinical or disease studies, but may not be desirable in other
+    cases.
+
+
+  o Output of gage function now includes the gene set test statistics
+    from pair-wise comparisons for all proper gene sets. The output is
+    always a named list now, with either 3 elements ("greater",
+    "less", "stats") for one-directional test or 2 elements
+    ("greater", "stats") for two-directional test.
+
+  o The individual p-value (and test statistics)from dependent
+    pair-wise comparisions, i.e. comparisions between the same
+    experiment vs different controls, are now summarized into a single
+    value. In other words, the column number of individual p-values or
+    statistics is always the same as the sample number in the
+    experiment (or disease) group. This change made the argument value
+    compare="1ongroup" and argument full.table less useful. It also
+    became easier to check the perturbations at gene-set level for
+    individual samples.
+
+  o Whole gene-set level changes (either p-values or statistics) can
+    now be visualized using heatmaps due to the third change above.
+    Correspondingly, functions \code{sigGeneSet} and \code{gagePipe}
+    have been revised to plot heatmaps for whole gene sets.
+
+  o Fixed a bug in gs.zTest function: mod <- (length(ix)/s)^(1/2), it
+    is mod <- length(ix)^(1/2)/s before. Thanks to Nhan Thi HO from
+    Michigan State University.

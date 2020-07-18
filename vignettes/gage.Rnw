@@ -1,0 +1,502 @@
+%\VignetteIndexEntry{Generally Applicable Gene-set/Pathway Analysis}
+%\VignetteDepends{gageData, pathview}
+%\VignetteSuggests{Rgraphviz, RBGL}
+%\VignettePackage{gage}
+
+\documentclass[11pt]{article}
+
+\usepackage{times}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{longtable}
+\usepackage[cm]{fullpage}
+\usepackage[pdftex]{graphicx}
+\usepackage[authoryear,round]{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
+\SweaveOpts{keep.source=TRUE,eps=FALSE,pdf=TRUE,prefix=TRUE} 
+
+% R part
+\newcommand{\R}[1]{{\textsf{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{{\textit{#1}}}
+\newcommand{\Rclass}[1]{{\textit{#1}}}
+\newcommand{\Metas}[1]{{\texttt{#1}}}
+
+%float placement
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+
+\begin{document}
+\setkeys{Gin}{width=0.8\textwidth}
+\title{Generally Applicable Gene-set/Pathway Analysis}
+\author{Weijun Luo {\small(\href{mailto:luo\_weijun@yahoo.com}{luo\_weijun AT yahoo.com})}}
+
+\maketitle
+
+\begin{abstract}
+  In this vignette, we demonstrate the \Rpackage{gage} package for gene set (enrichment or GSEA) or pathway analysis. The \Rpackage{gage} package implement the GAGE method. GAGE is generally applicable independent of microarray and RNA-Seq data attributes including sample sizes, experimental designs, assay platforms, and other types of heterogeneity, and consistently achieves superior performance over other frequently used methods. We introduce functions and data for routine and advanced gene set (enrichment) analysis, as well as results presentation and interpretation. We also cover package installation, data preparation and common application errors. Two secondary vignettes, \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/dataPrep.pdf}{"Gene set and data preparation"} and \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/RNA-seqWorkflow.pdf}{"RNA-Seq Data Pathway and Gene-set Analysis Workflows"}, demonstrate more applications and usages of GAGE.
+\end{abstract}
+
+\section{Cite our work}
+
+Weijun Luo, Michael Friedman, Kerby Shedden, Kurt Hankenson, and Peter Woolf. GAGE: generally applicable gene set enrichment for pathway analysis. BMC Bioinformatics, 2009. \href{http://www.biomedcentral.com/1471-2105/10/161}{doi:10.1186/1471-2105-10-161}.
+
+\section{Quick start with demo data}
+\label{sec:quick}
+This is the most basic use of \Rpackage{gage}, please check the full description below for more information. If you have difficulties in using R in general, you may use the \href{https://pathview.uncc.edu/}{Pathview Web server: pathview.uncc.edu}. \href{https://pathview.uncc.edu/}{The server} implemented GAGE based pathway analysis and Pathview based data visualization in \href{https://pathview.uncc.edu/example4}{a comprehensive pathway analysis workflow}. Please check \href{https://pathview.uncc.edu/overview}{the overview page} and \href{https://academic.oup.com/nar/article-lookup/doi/10.1093/nar/gkx372}{the NAR web server paper} \citep{luo:etal:2017} for details. 
+
+<<synopsis1, echo=TRUE,  eval=FALSE>>=
+library(gage)
+data(gse16873)
+hn=(1:6)*2-1
+dcis=(1:6)*2
+@
+ 
+KEGG pathway analysis. Here you need to make sure species and gene ID type are the same in gene sets (kegg.gs) and expression data
+(gse16873). You can check by: \R{head(kegg.gs[[1]]); head(rownames(gse16873))}
+<<synopsis2, echo=TRUE,  eval=FALSE>>=
+data(kegg.gs)
+gse16873.kegg.p <- gage(gse16873, gsets = kegg.gs, ref = hn, samp = dcis)
+@ 
+
+GO analysis, separate BP, MF and CC categories
+<<synopsis3, echo=TRUE,  eval=FALSE>>=
+library(gageData)
+data(go.sets.hs)
+data(go.subs.hs)
+gse16873.bp.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$BP], ref = hn, samp = dcis)
+gse16873.mf.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$MF], ref = hn, samp = dcis)
+gse16873.cc.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$CC], ref = hn, samp = dcis)
+@ 
+
+\section{New features}
+\label{sec:news}
+\Rpackage{gage} ($\ge2.11.3$): A new secondary vignette, \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/RNA-seqWorkflow.pdf}{"RNA-Seq Data Pathway and Gene-set Analysis Workflows"}, demonstrates applications of GAGE/Pathview workflows in RNA-Seq data analysis.
+\\
+\\
+\Rpackage{gage} ($\ge2.11.3$): A new function, \Rfunction{kegg.gsets}, has been introduced in the package. You may use it to compile pathway gene set data any time needed for one of the 3000 KEGG species and  KEGG Orthology (with species="ko"). In addition, you get the most updated pathway gene set data as it is retrieved from KEGG in real time. Please check the \hyperref[code:kegg.gsets]{Section Basic Analysis} and the help info on the function for details.
+\\
+\\
+\Rpackage{gage} ($\ge2.13.5$): Another new function, \Rfunction{go.gsets}, has been introduced in the package. You may use it to compile GO (Gene Ontology) gene set data any time needed for 19 common species annotated in Bioconductor and more others by the users. Please check the \hyperref[code:go.gsets]{Section Basic Analysis} and the help info on the function for details.
+
+\section{Introduction}
+Gene set analysis (GSA) is a powerful strategy to infer functional and mechanistic changes from high through microarray or sequencing data. GSA focuses on sets of related genes and has established major advantages over per-gene based different expression analyses, including greater robustness, sensitivity and biological relevance.  However, classical GSA methods only have limited usage to a small number of microarray or RNA-Seq studies as they cannot handle datasets of different sample sizes, experimental designs and other types of heterogeneity \citep{luo:etal:2009}. To address these limitations, we present a new GSA method called Generally Applicable Gene-set Enrichment (GAGE) \citep{luo:etal:2009}. We have validated GAGE method extensively against the most widely used GSA methods in both applicability and performance \citep{luo:etal:2009}. In this manual, we focus on the implementation and usage of the R package, \Rpackage{gage}.
+
+In \Rpackage{gage} package, we provide a series of functions for basic GAGE analysis, result processing and presentation. We have also built pipeline routines for of multiple GAGE analysis on different comparisons or samples, the comparison of parallel analysis results, and even the combined analysis of heterogeneous data from different sources/studies.
+
+This package also supplies an example microarray dataset. In GAGE paper \citep{luo:etal:2009} and the old versions of \Rpackage{gage} package, we used a BMP6 microarray experiment as the demo data. Here we choose to use another published microarray dataset from GEO, GSE16873 \citep{emery:etal:2009}, as our primary demo data, as to show more and advanced functionality and applications of GAGE with this update package. GSE16873 is a breast cancer study \citep{emery:etal:2009}, which covers twelve patient cases, each with HN (histologically normal), ADH (ductal hyperplasia), and DCIS (ductal carcinoma in situ) RMA samples. Hence, there are 12*3=36 microarray hybridizations or samples interesting to us plus 4 others less interesting in this full dataset. Due to the size limit of this package, we split this GSE16873 into two halves, each including 6 patients with their HN and DCIS but not ADH tissue types. Raw data for these two halves were processed using two different methods, FARMS \citep{hochreiter:etal:2006} and RMA \citep{iriz:etal:2003}, respectively to generate the non-biological data heterogeneity. This \Rpackage{gage} package, we only include the first half dataset for 6 patients (processed using FARMS). The second half dataset plus the full dataset (including all HN, ADH and DCIS samples of all 12 patients, processed together using FARMS) and the original BMP6 dataset is supplied with a data package, \Rpackage{gageData}. Most of our demo analyses will be done on the first half dataset, except for the advanced analysis where we use both halves datasets with all 12 patients. While the \Rpackage{gage} package provides \Rfunction{kegg.gsets} and \Rfunction{go.gsets} to generate updated KEGG pathway and GO (Gene Ontology) gene set in real time, it also includes useful human gene set data derived from KEGG pathway and GO databases. We also supply extra gene set data for other species including mouse, rat and yeast in the data package, \Rpackage{gageData}, available from the \href{http://bioconductor.org/packages/release/data/experiment/}{bioconductor website}. In addition, the users may derive other own gene sets using the \Rfunction{kegg.gsets} and \Rfunction{go.gsets} functions.
+
+The manual is written by assuming the user has minimal R/Bioconductor knowledge. Some descriptions and code chunks cover very basic usage of R. The more experienced users may simply omit these parts. 
+
+\section{Installation}
+Assume R has been correctly installed and accessible under current directory. Otherwise, please contact your system admin or follow the instructions on \href{http://www.r-project.org/}{R website}.
+
+Start R: from Linux/Unix command line, type \verb@R@ (Enter); for Mac or Windows GUI, double click the R application icon to enter R console.
+
+End R: type in \verb@q()@ when you are finished with the analysis using R, but not now.
+
+Two options:
+
+Either install with BiocManager from Bioconductor:
+<<install, echo=TRUE, eval=FALSE>>=
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install(c("gage","gageData"))
+@ 
+
+Or install without using Bioconductor:
+Download \Rpackage{gage} and \Rpackage{gageData} packages (make sure with proper version number and zip format) and save to \verb@/your/local/directory/@.
+<<install, echo=TRUE, eval=FALSE>>=
+install.packages(c("/your/local/directory/gage_2.9.1.tar.gz",
+    "/your/local/directory/gageData_1.0.0.tar.gz"), 
+    repos = NULL, type = "source")
+@ 
+
+
+\section{Get Started}
+Under R, first we load the \Rpackage{gage} package:
+
+<<start, echo=FALSE>>=
+options(width=80)
+@ 
+
+<<start, echo=TRUE>>=
+library(gage)
+@ 
+
+To see a brief overview of the package:
+<<start, echo=TRUE, eval=FALSE>>=
+library(help=gage)
+@ 
+
+To get help on any function (say the main function, \verb@gage@), use the \verb@help@ command in either one of the following two forms:
+<<start, echo=TRUE, eval=FALSE>>=
+help(gage)
+?gage
+@ 
+
+\section{Basic Analysis}
+GAGE \citep{luo:etal:2009} is a widely applicable method for gene set or pathway analysis. In such analysis, we check for coordinated differential expression over gene sets instead of changes of individual genes. Gene sets are pre-defined groups of genes, which are functionally related. Commonly used gene sets include those derived from KEGG pathways, Gene Ontology terms, gene groups that share some other functional annotations, including common transcriptional regulators (like transcription factors, small interfering RNA's or siRNA etc), genomic locations etc. Consistent perturbations over such gene sets frequently suggest mechanistic changes. GSA is much more robust and sensitive than individual gene analysis \citep{luo:etal:2009}, especially considering the functional redundancy of individual genes and the noise level of high throughput assay data. GAGE method implemented in this package makes GSA feasible to all microarray and RNA-Seq studies, irrespecitve of the sample size, experiment design, array platform etc. Let's start with the most basic gene set analysis. Note that both the demo expression data and gene set data are ready here, if not, please check vignette, \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/dataPrep.pdf}{"Gene set and data preparation"}, for data preparation.
+
+We load and look at the demo microarray data first. Note that although we use microarray data as example, GAGE is equally applicable to RNA-Seq data and other types of gene/protein centered high throughput data. The other vignette, \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/RNA-seqWorkflow.pdf}{"RNA-Seq Data Pathway and Gene-set Analysis Workflows"}, demonstrates such applications of GAGE.
+<<dataPrep, echo=TRUE>>=
+data(gse16873)
+cn=colnames(gse16873)
+hn=grep('HN',cn, ignore.case =T)
+adh=grep('ADH',cn, ignore.case =T)
+dcis=grep('DCIS',cn, ignore.case =T)
+print(hn)
+print(dcis)
+@ 
+
+Check to make sure your gene sets and your expression data are using
+the same ID system (Entrez Gene ID, Gene symbol, or probe set ID
+etc). Entrez Gene IDs are integer numbers, Gene symbols are characters, and
+probe set IDs (Affymetrix GeneChip) are characters with \verb@_at@ suffix. When gene sets and expression data do use different types of ID, please check vignette, \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/dataPrep.pdf}{"Gene set and data preparation"}, for ID conversion solutions.
+
+<<dataPrep, echo=TRUE>>=
+data(kegg.gs)
+data(go.gs)
+lapply(kegg.gs[1:3],head)
+head(rownames(gse16873))
+@ 
+
+We normally do GAGE analysis using gene sets derived from on KEGG pathways or GO term groups. Here we use the human gene set data coming with this package with the human microarray dataset GSE16873. Note that \verb@kegg.gs@ has been updated since gage version 2.9.1. From then, \verb@kegg.gs@ only include the subset of canonical signaling and metabolic pathways from KEGG pathway database, and \verb@kegg.gs.dise@ is the subset of disease pathways. And it is recommended to do KEGG pathway analysis with either \verb@kegg.gs@ or \verb@kegg.gs.dise@ seperately (rather than combined altogether) for better defined results. \verb@go.gs@ derived from human GO database only includes 1000 gene sets due to size limit. For full \verb@go.gs@ or gene sets data for other species, we may always use the \Rpackage{gageData} package. If you don't find the gene set data for your target species, you may use \Rfunction{kegg.gsets} or \Rfunction{go.gsets} to compile pathway gene set data any time needed as long as it is one of the 3000 KEGG species or a species with gene annotation package supplied in Bioconductor or the user. You may want to save the new gene set data for later use. An another advantage of using \Rfunction{kegg.gsets} is that you get the most updated pathway gene set data as it is retrieved from KEGG in real time.
+
+\phantomsection
+\label{code:kegg.gsets}
+<<kegg.gsets, echo=TRUE>>=
+kg.hsa=kegg.gsets("hsa")
+kegg.gs=kg.hsa$kg.sets[kg.hsa$sigmet.idx]
+#save(kegg.gs, file="kegg.hsa.sigmet.gsets.RData")
+@
+<<korg, echo=TRUE>>=
+#kegg.gsets works with 3000 KEGG species,for examples:
+data(korg)
+head(korg[,1:3])
+@ 
+
+\phantomsection
+\label{code:go.gsets}
+<<go.gsets, echo=TRUE>>=
+go.hs=go.gsets(species="human")
+go.bp=go.hs$go.sets[go.hs$go.subs$BP]
+go.mf=go.hs$go.sets[go.hs$go.subs$MF]
+go.cc=go.hs$go.sets[go.hs$go.subs$CC]
+#save(go.bp, go.mf, go.cc, file="go.hs.gsets.RData")
+@
+<<bods, echo=TRUE>>=
+#for Bioconductor species supported by go.gsets function:
+data(bods)
+print(bods)
+@ 
+
+Here we look at the expression changes towards one direction (either up- or down- regulation) in the gene sets. The results of such 1-directional analysis is a list of two matrices, corresponding to the two directions. Each result matrix contains multiple columns of test statistics and p-/q-values for all tested gene sets. Among them, p.val is the global p-value and q.val is the corresponding FDR q-value. Gene sets are ranked by significance. Type \verb@?gage@ for more information.
+
+<<gage.1direction, echo=TRUE>>=
+gse16873.kegg.p <- gage(gse16873, gsets = kegg.gs, 
+    ref = hn, samp = dcis)
+#go.gs here only the first 1000 entries as a fast example.
+gse16873.go.p <- gage(gse16873, gsets = go.gs, 
+    ref = hn, samp = dcis)
+#or we can do analysis on BP, MF, or CC subcategories if we've
+#generated the data as above.
+#gse16873.bp.p <- gage(gse16873, gsets = go.bp,
+#                        ref = hn, samp = dcis)
+str(gse16873.kegg.p, strict.width='wrap')
+head(gse16873.kegg.p$greater[, 1:5], 4)
+head(gse16873.kegg.p$less[, 1:5], 4)
+head(gse16873.kegg.p$stats[, 1:5], 4)
+@ 
+
+As described in GAGE paper \citep{luo:etal:2009}, it is worthy to run \Rfunction{gage} with \verb@same.dir=F@ option on KEGG pathways too to capture pathways perturbed towards both directions simultaneously. Note we normally do not use \verb@same.dir=F@ option on GO groups, which are mostly gene sets coregulated towards the same direction.
+
+<<gage.2direction, echo=TRUE>>=
+gse16873.kegg.2d.p <- gage(gse16873, gsets = kegg.gs, 
+    ref = hn, samp = dcis, same.dir = F)
+head(gse16873.kegg.2d.p$greater[,1:5], 4)
+head(gse16873.kegg.2d.p$stats[,1:5], 4)
+@ 
+
+ 
+We may also do PAGE analysis \citep{kim:etal:2005} with or without different combinations of GAGE style options. The key difference is 1) to use z-test instead of two-sample t-test and 2) a group-on-group comparison scheme (by setting arguement \verb@compare="as.group"@) instead of default one-on-one scheme (\verb@compare="paired"@) as in GAGE. Here we only used z-test option to compare the net effect of using differet gene set tests, as detailed in \cite{luo:etal:2009}.
+<<page, echo=TRUE>>=
+gse16873.kegg.page.p <- gage(gse16873, gsets = kegg.gs, 
+    ref = hn, samp = dcis, saaTest = gs.zTest)
+head(gse16873.kegg.page.p$greater[, 1:5], 4)
+@ 
+
+We get much smaller p-/q-values with PAGE than with GAGE. As described in GAGE paper \citep{luo:etal:2009}, many significant calls made by PAGE are likely false positives.
+
+With \Rpackage{gage}, we have much more options to tweak than those related to PAGE for more customized GAGE analysis. Here we show a few other alternative ways of doing GAGE analysis by setting other arguements.
+Use t-test statistics instead of fold change as per gene score:
+<<gage.alternative, echo=TRUE, eval=FALSE>>=
+gse16873.kegg.t.p <- gage(gse16873, gsets = kegg.gs, 
+    ref = hn, samp = dcis, use.fold = F)
+@ 
+
+If you are very concerned about the normality of expression level changes or the gene set sizes are mostly smaller than 10, we may do the non-parametric Mann Whitney U tests (rank test without distribution assumption) instead of the parametric two-sample t-tests on gene sets:
+<<gage.alternative, echo=TRUE, eval=FALSE>>=
+gse16873.kegg.rk.p <- gage(gse16873, gsets = kegg.gs, 
+    ref = hn, samp = dcis, rank.test = T)
+@ 
+
+Do the non-parametric Kolmogorov-Smirnov tests (like rank test, used in GSEA) instead of the parametric two-sample t-tests on gene sets:
+<<gage.alternative, echo=TRUE, eval=FALSE>>=
+gse16873.kegg.ks.p <- gage(gse16873, gsets = kegg.gs, 
+    ref = hn, samp = dcis, saaTest = gs.KSTest)
+@ 
+
+Frequently, the samples are not one-on-one paired in the experiment design. In such cases, we take the samples as unpaired:
+<<gage.alternative, echo=TRUE, eval=FALSE>>=
+gse16873.kegg.unpaired.p <- gage(gse16873, gsets = kegg.gs, 
+    ref = hn, samp = dcis, compare = "unpaired")
+@ 
+
+Since version 2.2.0, gage package does more robust p-value summarization using Stouffer's method through argument \verb@use.stouffer=TRUE@. The original p-value summarization, i.e. negative log sum following a Gamma distribution as the Null hypothesis, may produce less stable global p-values for large or heterogenous datasets. In other words, the global p-value could be heavily affected by a small subset of extremely small individual p-values from pair-wise comparisons. Such sensitive global p-value leads to the "dual signficance" phenomenon. Dual-signficant means a gene set is called significant simultaneously in both 1-direction tests (up- and down-regulated). While not desirable in other cases, "dual signficance" could be informative in revealing the sub-types or sub-classes in big clinical or disease studies. If we preferred the original Gamma distribution based p-value summarization, we only need to set \verb@use.stouffer=FALSE@:
+
+<<gage.alternative, echo=TRUE, eval=FALSE>>=
+gse16873.kegg.gamma.p <- gage(gse16873, gsets = kegg.gs, 
+    ref = hn, samp = dcis, use.stouffer=FALSE)
+@ 
+
+Sometimes we have expression data where genes are labelled by symbols (or other IDs). Let's make such a dataset \Robject{gse16873.sym} from \Robject{gse16873}, which is originally lable by Entrez Gene IDs.
+<<symbol.ID, echo=TRUE>>=
+head(rownames(gse16873))
+gse16873.sym<-gse16873
+data(egSymb)
+rownames(gse16873.sym)<-eg2sym(rownames(gse16873.sym))
+head(rownames(gse16873.sym))
+@ 
+
+If we want to do GAGE analysis, we can convert rownames of \Robject{gse16873.sym} back to Entrez Gene IDs or convert gene set definitions to gene symbols.
+<<symbol.ID, echo=TRUE>>=
+kegg.gs.sym<-lapply(kegg.gs, eg2sym)
+lapply(kegg.gs.sym[1:3],head)
+gse16873.kegg.p2 <- gage(gse16873.sym, gsets = kegg.gs.sym, 
+    ref = hn, samp = dcis)
+@ 
+
+ 
+\section{Result Presentation and Intepretation}
+
+We may output full result tables from the analysis.
+<<full.table, echo=TRUE>>=
+write.table(gse16873.kegg.2d.p$greater, file = "gse16873.kegg.2d.p.txt", 
+    sep = "\t")
+write.table(rbind(gse16873.kegg.p$greater, gse16873.kegg.p$less), 
+    file = "gse16873.kegg.p.txt", sep = "\t")
+@ 
+
+Sort and count signficant gene sets based on q- or p-value cutoffs:
+<<significant.genesets, echo=TRUE>>=
+gse16873.kegg.sig<-sigGeneSet(gse16873.kegg.p, outname="gse16873.kegg")
+str(gse16873.kegg.sig, strict.width='wrap')
+gse16873.kegg.2d.sig<-sigGeneSet(gse16873.kegg.2d.p, outname="gse16873.kegg")
+str(gse16873.kegg.2d.sig, strict.width='wrap')
+write.table(gse16873.kegg.2d.sig$greater, file = "gse16873.kegg.2d.sig.txt", 
+    sep = "\t")
+write.table(rbind(gse16873.kegg.sig$greater, gse16873.kegg.sig$less), 
+    file = "gse16873.kegg.sig.txt", sep = "\t")
+@ 
+
+
+\begin{figure} 
+\begin{center} 
+\includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf,page=3]{gse16873.kegg.gs.heatmap}
+\includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf,page=2]{gse16873.kegg.gs.2d.heatmap}
+\caption{Example heatmaps generated with \Rfunction{sigGeneSet} function as to show whole gene set perturbations. Upper panel: signficant KEGG pathways in 1-directional (either up or down) test; lower panel: signficant KEGG pathways in 2-directional test. Only gene set test statistics are shown, heatmaps for -log10(p-value) look similar.}
+\label{fig:1}
+\end{center}  
+\end{figure} 
+
+Heatmaps in \hyperref[fig:1]{Figure \ref*{fig:1}} visualize whole gene set perturbations, i.e. the gene set test statistics (or p-values) in pseudo-color.
+
+There are frequently multiple significant gene sets that share multiple member genes or represent the same regulatory mechanism. Such redundancy in signficant gene set could be misleading too. A pathway or functional group itself is not relevant, but may be called signficant because it share multiple perturbed genes with one really significant gene set. We derive the non-redundant signficant gene set lists, with result output as tab-delimited text files automatically below. Here, function \Rfunction{esset.grp} calls redundant gene sets to be those overlap heavily in their core genes. Core genes are those member genes that really contribute to the signficance of the gene set in GAGE analysis. Arguement \verb@pc@ is the cutoff p-value for the overlap between gene sets, default to \verb@10e-10@, may need trial-and-error to find the optimal value in minor cases. Note that we use small \verb@pc@ because redundant gene sets are not just signficant in overlap, but are HIGHLY significant so.
+<<nonredundant.genesets, echo=TRUE>>=
+gse16873.kegg.esg.up <- esset.grp(gse16873.kegg.p$greater, 
+    gse16873, gsets = kegg.gs, ref = hn, samp = dcis, 
+    test4up = T, output = T, outname = "gse16873.kegg.up", make.plot = F)
+gse16873.kegg.esg.dn <- esset.grp(gse16873.kegg.p$less, 
+    gse16873, gsets = kegg.gs, ref = hn, samp = dcis, 
+    test4up = F, output = T, outname = "gse16873.kegg.dn", make.plot = F)
+names(gse16873.kegg.esg.up)
+head(gse16873.kegg.esg.up$essentialSets, 4)
+head(gse16873.kegg.esg.up$setGroups, 4)
+head(gse16873.kegg.esg.up$coreGeneSets, 4)
+@ 
+
+
+We may extract the gene expression data for top gene sets, output and visualize these expression data for further intepretation. Although we can check expression data in each top gene set one by one, here we work on the top 3 up-regulated KEGG pathways in a batch. The key functions we use here are, \Rfunction{essGene} (for extract genes with substiantial or above-background expression changes in gene sets) and \Rfunction{geneData} (for output and visualization of expression data in gene sets).
+<<sel.gene.expression, echo=TRUE>>=
+rownames(gse16873.kegg.p$greater)[1:3]
+gs=unique(unlist(kegg.gs[rownames(gse16873.kegg.p$greater)[1:3]]))
+essData=essGene(gs, gse16873, ref =hn, samp =dcis)
+head(essData, 4)
+ref1=1:6
+samp1=7:12
+for (gs in rownames(gse16873.kegg.p$greater)[1:3]) {
+    outname = gsub(" |:|/", "_", substr(gs, 10, 100))
+    geneData(genes = kegg.gs[[gs]], exprs = essData, ref = ref1, 
+        samp = samp1, outname = outname, txt = T, heatmap = T, 
+        Colv = F, Rowv = F, dendrogram = "none", limit = 3, scatterplot = T)
+}
+@ 
+
+\hyperref[fig:2]{Figure \ref*{fig:2}} shows example heatmap and scatter plots generated by the code chunk above. Notice that this heatmap \hyperref[fig:2]{Figure \ref*{fig:2}} is somewhat inconsistent from the scatter plot, because the heatmap compares all samples with each other (hence unpaired samples assumed), yet the scatter plot \hyperref[fig:2]{Figure \ref*{fig:2}} incorporate the experiment design information and compare the match sample pairs only. The same inconsistency is also shown in \hyperref[fig:3]{Figure \ref*{fig:3}}.
+
+
+\begin{figure}
+\begin{center} 
+\includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf]{Oxidative_phosphorylation.geneData.heatmap}
+\includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf]{Oxidative_phosphorylation.geneData}
+\caption{Example heatmap and scatter plot generated with \Rfunction{geneData} function to show the gene expresion perturbations in specified gene set(s). Only HN (control) and DCIS (experiment) data from the first two patients are plotted in the scatter plot.}
+\label{fig:2}
+\end{center}  
+\end{figure} 
+
+Sometimes, we may also want to check the expression data for all genes in a top gene set, rather than just those above-background genes selected using \Rfunction{essGene} as above. Notice in this case (\hyperref[fig:3]{Figure \ref*{fig:3}}), the heatmap may less informative than the one in Figure 2 due to the inclusion of background noise.
+<<all.gene.expression, echo=TRUE>>=
+for (gs in rownames(gse16873.kegg.p$greater)[1:3]) {
+    outname = gsub(" |:|/", "_", substr(gs, 10, 100))
+    outname = paste(outname, "all", sep=".")
+    geneData(genes = kegg.gs[[gs]], exprs = gse16873, ref = hn, 
+        samp = dcis, outname = outname, txt = T, heatmap = T, 
+        Colv = F, Rowv = F, dendrogram = "none", limit = 3, scatterplot = T)
+}
+@ 
+
+
+\begin{figure} 
+\begin{center} 
+\includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf]{Oxidative_phosphorylation.all.geneData.heatmap}
+\includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf]{Oxidative_phosphorylation.all.geneData}
+\caption{Example heatmap and scatter plot generated with \Rfunction{geneData} function to show the gene expresion perturbations in specified gene set(s). Only HN (control) and DCIS (experiment) data from the first two patients are plotted in the scatter plot. And all genes in a gene set are included here.}
+\label{fig:3}
+\end{center}  
+\end{figure} 
+
+Starting from BioC 2.12 (R-2.16), we can visualize the KEGG pathway analysis results using a new package called \href{www.bioconductor.org/packages/2.12/bioc/html/pathview.html}{\Rpackage{pathview}} \citep{luo:etal:2013}. Of course, you may manually installed the package with earlier BioC or R versions. Note that \Rpackage{pathview} can view our expression perturbation patterns on two styles of pathway graphs: KEGG view or Graphviz view ((\hyperref[fig:4]{Figure \ref*{fig:4}}). All we need is to supply our data (expression changes) and specify the target pathway. \Rpackage{Pathview} automatically downloads the pathway graph data, parses the data file, maps user data to the pathway, and renders pathway graph with the mapped data. For demonstratoin, let's look at a couple of selected pathways.
+<<pathview, echo=TRUE, results=hide>>=
+library(pathview)
+gse16873.d <- gse16873[ ,dcis] - gse16873[ ,hn]
+path.ids=c("hsa04110 Cell cycle", "hsa00020 Citrate cycle (TCA cycle)")
+path.ids2 <- substr(path.ids, 1, 8)
+#native KEGG view
+pv.out.list <- sapply(path.ids2, function(pid) pathview(gene.data = gse16873.d[, 
+                        1:2], pathway.id = pid, species = "hsa"))
+#Graphviz view
+pv.out.list <- sapply(path.ids2, function(pid) pathview(gene.data = gse16873.d[, 
+                        1:2], pathway.id = pid, species = "hsa", kegg.native=F,
+                        sign.pos="bottomleft")) 
+@ 
+
+\begin{figure}
+        \centering
+        \vspace{-40pt}
+        \begin{subfigure}[b]{1.0\textwidth}
+                \centering
+                \fbox{\includegraphics[width=15cm,type=png,ext=.png,read=.png]{hsa00020.pathview.multi}}
+                \caption{}
+                \label{fig:4a}
+        \end{subfigure}
+        \\
+        \vspace{20pt}
+        \begin{subfigure}[b]{1.0\textwidth}
+                \centering
+                \includegraphics[width=15cm,type=pdf,ext=.pdf,read=.pdf]{hsa04110.pathview.multi}
+                \caption{}
+                \label{fig:4b}
+        \end{subfigure}
+        \\
+        \caption{Visualize GAGE pathway analysis results using \Rpackage{pathview} (a) KEGG view of hsa00020 Citrate cycle (TCA cycle) or (b) Graphviz view of hsa04110 Cell cycle.}
+        \label{fig:4}
+\end{figure}
+
+
+This pathway graph based data visualization can be simply applied to all selected pathways in a batch. In other words, in a few lines of code, we may connect \Rpackage{gage} to \Rpackage{pathview} for large-scale and fully automated pathway analysis and results visualization.
+<<pathview.all, echo=TRUE, results=hide, eval=FALSE>>=
+sel <- gse16873.kegg.p$greater[, "q.val"] < 0.1 & !is.na(gse16873.kegg.p$greater[,
+"q.val"])
+path.ids <- rownames(gse16873.kegg.p$greater)[sel]
+path.ids2 <- substr(path.ids, 1, 8)
+pv.out.list <- sapply(path.ids2, function(pid) pathview(gene.data = gse16873.d[,
+                        1:2], pathway.id = pid, species = "hsa"))
+@ 
+
+Note \href{https://pathview.uncc.edu/}{the Pathview Web server} provides a comprehensive workflow for both regular and integrated pathway analysis of multiple omics data \citep{luo:etal:2017}, as shown in \href{https://pathview.uncc.edu/example4}{Example 4 online}. 
+
+\section{Advanced Analysis}
+We frequently need to do GAGE analysis repetitively on mulitple comparisons (with different samples vs references) in a study, or even with different analysis options (paired or unpaired samples, use or not use rank test etc). We can carry these different analyses with different sub-datasets all at once using a composite funciton, \Rfunction{gagePipe}. Different from \Rfunction{gage}, \Rfunction{gagePipe} accepts lists of reference/sample column numbers, with matching lists/vectors of other arguements. Function \Rfunction{gagePipe} runs multiple rounds of GAGE in a batch without interference, and outputs signficant gene set lists in text format and save the results in \verb@.RData@ format.
+<<gagePipe, echo=TRUE>>=
+#introduce another half dataset
+library(gageData)
+data(gse16873.2)
+cn2=colnames(gse16873.2)
+hn2=grep('HN',cn2, ignore.case =T)
+dcis2=grep('DCIS',cn2, ignore.case =T)
+#batch GAGE analysis on the combined dataset
+gse16873=cbind(gse16873, gse16873.2)
+dataname='gse16873' #output data prefix
+sampnames=c('dcis.1', 'dcis.2')
+refList=list(hn, hn2+12)
+sampList=list(dcis, dcis2+12)
+gagePipe(gse16873, gsname = "kegg.gs", dataname = "gse16873", 
+    sampnames = sampnames, ref.list = refList, samp.list = sampList, 
+    comp.list = "paired")
+@ 
+
+We may further loaded the \verb@.RData@ results, and do more analysis. For instance, we may compare the GAGE analysis results from the differen comparisons or different sub-datasets we have worked on. Here, the main function to use is \Rfunction{gageComp}. Comparison rsults between multiple GAGE analyses will be output as text files and optionally, venn diagram can be plotted in PDF format as shown in \hyperref[fig:5]{Figure \ref*{fig:5}}.
+<<gageComp, echo=TRUE>>=
+load('gse16873.gage.RData')
+gageComp(sampnames, dataname, gsname = "kegg.gs", 
+    do.plot = TRUE)
+@ 
+
+
+\begin{figure} 
+\begin{center} 
+\includegraphics[trim = 25mm 40mm 25mm 40mm, width=8cm,type=pdf,ext=.pdf,read=.pdf,page=2]{gse16873.gage.comp}
+\caption{An example venn diagram generated with \Rfunction{gageComp} function. Compared are KEGG pathway results for the two half datasets when \Rfunction{gagePipe} was applied above.}
+\label{fig:5}
+\end{center}  
+\end{figure} 
+
+GAGE with single array analysis design also provide a framework for combined analysis accross heterogeneous microarray studies/experiments. The combined dataset of \verb@gse16873@ and \verb@gse16873.2@ provids a good example of heterogeneous data. As mentioned above, the two half-datasets were processed using FARMS \citep{hochreiter:etal:2006} and RMA \citep{iriz:etal:2003} methods separately. Therefore, the expression values and distributions are dramatically different between the two halves. Using function \Rfunction{heter.gage} we can do some combined analysis on such heterogeneous dataset(s). \Rfunction{heter.gage} is similar to \Rfunction{gagePipe} in that \verb@ref.list@ and \verb@samp.list@ arguements need to be lists of column numbers with matching vector of the \verb@compare@ arguement. Different from \Rfunction{gagePipe}, \Rfunction{heter.gage} does one combined GAGE analysis on all data instead of multiple separate analyses on different sub-datasets/comparisons.
+
+Just to have an idea on how heterogeneous these two half datasets are, we may visualize the expression level distributions (\hyperref[fig:6]{Figure \ref*{fig:6}}): 
+
+\begin{figure}[t]
+\begin{center}
+\includegraphics[width=10cm,type=pdf,ext=.pdf,read=.pdf]{gage-heter.gage}
+\caption{Sample-wise gene expression level distributions for GSE16873 with the two differently processed half datasets.}
+\label{fig:6}
+\end{center}
+\end{figure}
+
+<<heter.gage, fig=TRUE, echo=TRUE, include=FALSE>>=
+boxplot(data.frame(gse16873))
+gse16873.kegg.heter.p <- heter.gage(gse16873, gsets = kegg.gs, 
+    ref.list = refList, samp.list = sampList)
+gse16873.kegg.heter.2d.p <- heter.gage(gse16873, gsets = kegg.gs, 
+    ref.list = refList, samp.list = sampList, same.dir = F)
+@ 
+
+
+We may compare the results from this combined analysis of the combined dataset vs the analysis on the first half dataset above. As expected the top gene sets from this combined analysis are consistent yet with smaller p-values due to the use of more data.
+
+\section{Common Errors}
+\begin{itemize}
+\item Gene sets and expression data use different ID systems (Entrez Gene ID, Gene symbol or probe set ID etc). To correct, use functions like eg2sym or sym2eg, or check vignette, \href{http://bioconductor.org/packages/release/bioc/vignettes/gage/inst/doc/dataPrep.pdf}{"Gene set and data preparation"}, for more solutions. If you used customized CDF file based on Entrez Gene to processed the raw data, do: \verb@rownames(gse16873)=gsub('_at', '', rownames(gse16873))@.
+\item We use gene set data for a different species than the expression data, e.g. use \verb@kegg.mm@ instead of \verb@kegg.gs@ for human data. When running \verb@gage@ or \verb@gagePipe@ function, we get error message like, \verb@Error in if (is.na(spval[i])) tmp[i] <- NA : argument is of length zero@.
+\item Expression data have multiple probesets (as in Affymetrix GeneChip Data) for a single gene, but gene set analysis requires one entry per gene. You may pick up the most differentially expressed probeset for a gene and discard the rest, or process the raw intensity data using customized probe set definition (CDF file), where probes are re-mapped on a gene by gene base. Check the Methods section of GAGE paper \citep{luo:etal:2009} for details.
+\item Expression data have genes as columns and samples/chips as rows, i.e. in a transposed form. To correct, do: \verb@expdata=t(expdata)@.
+\end{itemize}
+
+\bibliographystyle{plainnat}
+\bibliography{gage}
+
+\end{document}

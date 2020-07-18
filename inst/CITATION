@@ -1,0 +1,21 @@
+citHeader("To cite gage:")
+
+citEntry(entry="article",  
+  author =       "Luo, Weijun and Friedman, Michael and Shedden, Kerby and Hankenson, Kurt and Woolf, Peter",
+  title = 	 "GAGE: generally applicable gene set enrichment for pathway analysis",
+  journal = 	 "BMC Bioinformatics",
+  year = 	 "2009",
+  volume = 	 "10",
+  pages = 	 "161",
+   textVersion = paste("Luo, W., Friedman, M., Shedden K., Hankenson, K. and Woolf, P GAGE:",
+  "Generally Applicable Gene Set Enrichment for Pathways Analysis. BMC",
+  "Bioinformatics, 2009, 10:161"))
+
+citFooter("This free open-source software implements academic research
+by the authors. Its development took a large amount of extra time and
+effort. If you use it, please support the project by citing the listed
+journal articles.")
+
+
+
+

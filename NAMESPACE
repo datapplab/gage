@@ -1,0 +1,24 @@
+
+importFrom(AnnotationDbi, as.list, get, mget)
+importFrom(GO.db, GOTERM, GOBPOFFSPRING, GOCCOFFSPRING, GOMFOFFSPRING)
+importClassesFrom(graph, graphNEL)
+importMethodsFrom(graph, connComp)
+import(KEGGREST)
+
+export(
+eg2sym, sym2eg,
+essGene,
+esset.grp,
+gage, gagePrep, gageSum,
+gageComp,
+gagePipe,
+geneData,
+gs.tTest, gs.zTest, gs.KSTest,
+heter.gage, pairData,
+go.gsets, kegg.gsets,
+readExpData,
+readList,
+sigGeneSet
+)
+
+#exportPattern("^[[:alpha:]]+")
