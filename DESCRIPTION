@@ -12,5 +12,5 @@ Imports: graph, KEGGREST, AnnotationDbi, GO.db
 Suggests: pathview, gageData, org.Hs.eg.db, hgu133a.db, GSEABase, Rsamtools, GenomicAlignments, TxDb.Hsapiens.UCSC.hg19.knownGene, DESeq, DESeq2, edgeR, limma
 License: GPL (>=2.0)
 URL: http://www.biomedcentral.com/1471-2105/10/161
-Collate: colorpanel.R deComp.R eg2sym.R esset.grp.R essGene.R gageComp.R gage-internal.R gagePipe.R gagePrep.R gage.R gageSum.R geneData.R go.gsets.R greenred.R gs.heatmap.R gs.KSTest.R gs.tTest.R gs.zTest.R heatmap2.R heter.gage.R invalid.R kegg.gsets.R kegg.species.code.R odd.R pairData.R readExpData.R readList.R rownorm.R sigGeneSet.R sym2eg.R vennCounts.R vennDiagram2.R
+Collate: colorpanel.R deComp.R eg2sym.R esset.grp.R essGene.R gageComp.R gage-internal.R gagePipe.R gagePrep.R gage.R gageSum.R geneData.R go.gsets.R greenred.R gs.heatmap.R gs.KSTest.R gs.tTest.R gs.zTest.R heatmap2.R heter.gage.R invalid.R kegg.gsets.R kegg.species.code.R odd.R pairData.R readExpData.R readList.R rownorm.R sigGeneSet.R sym2eg.R vennCounts.R vennDiagram2.R zzz.R
 LazyLoad: yes
