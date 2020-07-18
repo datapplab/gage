@@ -1,9 +1,9 @@
 
 # gage package
 
-[![](https://img.shields.io/badge/release%20version-3.38.3-green.svg)](https://www.bioconductor.org/packages/gage)
+[![](https://img.shields.io/badge/release%20version-3.38.3-blue.svg)](https://www.bioconductor.org/packages/gage)
 [![](https://img.shields.io/badge/devel%20version-3.39.3-green.svg)](https://github.com/datapplab/gage)
-[![](https://img.shields.io/badge/BioC%20since-2009-green.svg)](https://www.bioconductor.org/packages/devel/bioc/html/gage.html#since)
+[![](https://img.shields.io/badge/BioC%20since-2009-blue.svg)](https://www.bioconductor.org/packages/devel/bioc/html/gage.html#since)
 [![](https://img.shields.io/badge/GitHub%20since-2020-green.svg)](https://github.com/datapplab/gage)
 
 ## Overview
