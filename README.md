@@ -1,8 +1,8 @@
 
 # gage package
 
-[![](https://img.shields.io/badge/release%20version-3.38.3-blue.svg)](https://www.bioconductor.org/packages/gage)
-[![](https://img.shields.io/badge/devel%20version-3.39.3-green.svg)](https://github.com/datapplab/gage)
+[![](https://img.shields.io/badge/release%20version-2.38.3-blue.svg)](https://www.bioconductor.org/packages/gage)
+[![](https://img.shields.io/badge/devel%20version-2.39.3-green.svg)](https://github.com/datapplab/gage)
 [![](https://img.shields.io/badge/BioC%20since-2009-blue.svg)](https://www.bioconductor.org/packages/devel/bioc/html/gage.html#since)
 [![](https://img.shields.io/badge/GitHub%20since-2020-green.svg)](https://github.com/datapplab/gage)
 
@@ -20,7 +20,7 @@ Luo W, Friedman M, etc. GAGE: generally applicable gene set enrichment for pathw
 
 ``` r
 # install from BioConductor
-if (!requireNamespace("BiocManager", quietly = TRUE))
+if(!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("gage")
 
@@ -50,6 +50,11 @@ gse16873.bp.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$BP], ref = hn, sam
 gse16873.mf.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$MF], ref = hn, samp = dcis)
 gse16873.cc.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$CC], ref = hn, samp = dcis)
 ```
+#you may also generate update gene set data
+kegg.gs <- kegg.gsets("hsa")
+go.hs <- go.gsets(species="human")
+names(go.hs)
+go.mf <- go.hs$go.sets[go.hs$go.subs$MF]
 
 ## More information
 
