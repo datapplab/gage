@@ -42,9 +42,9 @@ dcis=(1:6)*2
 data(kegg.gs)
 gse16873.kegg.p <- gage(gse16873, gsets = kegg.gs, ref = hn, samp = dcis)
 #alternatively, you can also generate update KEGG gene sets:
-#kg.hsa <- kegg.gsets("hsa")
-#names(kegg.hsa)
-#kegg.gs <- kg.hsa$kg.sets[kg.hsa$sigmet.idx]
+kg.hsa <- kegg.gsets("hsa")
+names(kegg.hsa)
+kegg.gs <- kg.hsa$kg.sets[kg.hsa$sigmet.idx]
 
 #GO term analysis, separate BP, MF and CC categories, need to generate GO gene sets first
 go.hs <- go.gsets(species="human")
