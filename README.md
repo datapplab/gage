@@ -49,12 +49,13 @@ data(go.subs.hs)
 gse16873.bp.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$BP], ref = hn, samp = dcis)
 gse16873.mf.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$MF], ref = hn, samp = dcis)
 gse16873.cc.p <- gage(gse16873, gsets = go.sets.hs[go.subs.hs$CC], ref = hn, samp = dcis)
-```
+
 #you may also generate update gene set data
 kegg.gs <- kegg.gsets("hsa")
 go.hs <- go.gsets(species="human")
 names(go.hs)
 go.mf <- go.hs$go.sets[go.hs$go.subs$MF]
+```
 
 ## More information
 
