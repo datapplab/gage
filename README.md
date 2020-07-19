@@ -1,5 +1,5 @@
 
-# gage package
+# gage R package
 
 [![](https://img.shields.io/badge/release%20version-2.38.3-blue.svg)](https://www.bioconductor.org/packages/gage)
 [![](https://img.shields.io/badge/devel%20version-2.39.3-green.svg)](https://github.com/datapplab/gage)
@@ -16,7 +16,7 @@ Please cite the GAGE paper when using this open-source  package. This will help 
 
 Luo W, Friedman M, etc. GAGE: generally applicable gene set enrichment for pathway analysis. BMC Bioinformatics, 2009, 10, pp. 161, <a href=https://doi.org/10.1186/1471-2105-10-161>doi: 10.1186/1471-2105-10-161</a>
 
-## Installation
+## Installation (within R)
 
 ``` r
 # install from BioConductor
@@ -29,7 +29,7 @@ BiocManager::install("gage")
 devtools::install_github("datapplab/gage")
 ```
 
-## Quick start with demo data
+## Quick start with demo data (R code)
 
 ``` r
 #preparation
