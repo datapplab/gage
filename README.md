@@ -41,7 +41,9 @@ dcis=(1:6)*2
 #KEGG pathway analysis
 data(kegg.gs)
 #alternatively, you can also generate update KEGG gene sets
-#kegg.gs <- kegg.gsets("hsa")
+#kg.hsa <- kegg.gsets("hsa")
+#names(kegg.hsa)
+#kegg.gs <- kg.hsa$kg.sets[kg.hsa$sigmet.idx]
 gse16873.kegg.p <- gage(gse16873, gsets = kegg.gs, ref = hn, samp = dcis)
 
 #GO term analysis, separate BP, MF and CC categories, need to generate GO gene sets first
