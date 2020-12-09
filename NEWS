@@ -1,3 +1,14 @@
+VERSION 1.41.1/1.40.1
+-------------
+  
+  o korg now include 6833 KEGG species or 1588 new species beyond 2017.
+
+  o updated khier to included newly added reference pathways. kegg.gsets
+    can work with 466 pathways now.
+
+  o fixed installation and checking error by removing suggesting the
+    deprectated DESeq.
+
 VERSION 2.39.3/2.38.3
 -------------
   
