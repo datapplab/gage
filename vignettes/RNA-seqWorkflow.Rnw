@@ -1,5 +1,5 @@
 %\VignetteIndexEntry{RNA-Seq Data Pathway and Gene-set Analysis Workflows}
-%\VignetteDepends{pathview, gageData, Rsamtools, TxDb.Hsapiens.UCSC.hg19.knownGene, DESeq, DESeq2, edgeR, limma}
+%\VignetteDepends{pathview, gageData, Rsamtools, TxDb.Hsapiens.UCSC.hg19.knownGene, DESeq2, edgeR, limma}
 %\VignettePackage{gage}
 
 \documentclass[11pt]{article}
