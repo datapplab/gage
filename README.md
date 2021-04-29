@@ -31,7 +31,7 @@ devtools::install_github("datapplab/gage")
 
 ## Quick start with demo data (R code)
 
-Note we use the demo gene set data, i.e. `r kegg.gs` and `r go.sets.hs`. You can generate up-to-date gene set data using `r kegg.gsets` and `r go.gsets`. Please check  the help info on the function for details. Also here we focuse on KEGG pathways, which is good for most regular analyses. If you are interested in working with other major pathway databases, including Reactome, MetaCyc, SMPDB, PANTHER, METACROP etc, you can use [SBGNview](https://github.com/datapplab/SBGNview). Please check [SBGNview + GAGE based pathway analysis workflow](https://bioconductor.org/packages/devel/bioc/vignettes/SBGNview/inst/doc/pathway.enrichment.analysis.html).
+Note we use the demo gene set data, i.e. `kegg.gs` and `go.sets.hs`. You can generate up-to-date gene set data using `kegg.gsets` and `go.gsets`. Please check  the help info on the function for details. Also here we focuse on KEGG pathways, which is good for most regular analyses. If you are interested in working with other major pathway databases, including Reactome, MetaCyc, SMPDB, PANTHER, METACROP etc, you can use [SBGNview](https://github.com/datapplab/SBGNview). Please check [SBGNview + GAGE based pathway analysis workflow](https://bioconductor.org/packages/devel/bioc/vignettes/SBGNview/inst/doc/pathway.enrichment.analysis.html).
 
 
 ``` r
