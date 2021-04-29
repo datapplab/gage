@@ -1,8 +1,8 @@
 
 # gage R package
 
-[![](https://img.shields.io/badge/release%20version-2.38.3-blue.svg)](https://www.bioconductor.org/packages/gage)
-[![](https://img.shields.io/badge/devel%20version-2.39.3-green.svg)](https://github.com/datapplab/gage)
+[![](https://img.shields.io/badge/release%20version-2.40.2-blue.svg)](https://www.bioconductor.org/packages/gage)
+[![](https://img.shields.io/badge/devel%20version-2.41.2-green.svg)](https://github.com/datapplab/gage)
 [![](https://img.shields.io/badge/BioC%20since-2009-blue.svg)](https://www.bioconductor.org/packages/gage)
 [![](https://img.shields.io/badge/GitHub%20since-2020-green.svg)](https://github.com/datapplab/gage)
 
@@ -30,6 +30,9 @@ devtools::install_github("datapplab/gage")
 ```
 
 ## Quick start with demo data (R code)
+
+Note we use the demo gene set data, i.e. \R{kegg.gs} and \R{go.sets.hs}. You can generate up-to-date gene set data using \Rfunction{kegg.gsets} and \Rfunction{go.gsets}. Please check the \hyperref[code:kegg.gsets]{Section Basic Analysis} and the help info on the function for details. Also here we focuse on KEGG pathways, which is good for most regular analyses. If you are interested in working with other major pathway databases, including Reactome, MetaCyc, SMPDB, PANTHER, METACROP etc, you can use \href{https://github.com/datapplab/SBGNview}{\Rpackage{SBGNview}}. Please check \href{https://bioconductor.org/packages/devel/bioc/vignettes/SBGNview/inst/doc/pathway.enrichment.analysis.html}{SBGNview + GAGE based pathway analysis workflow}.
+
 
 ``` r
 #preparation
