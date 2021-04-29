@@ -1,8 +1,8 @@
 Package: gage
 Type: Package
 Title: Generally Applicable Gene-set Enrichment for Pathway Analysis
-Version: 2.41.1
-Date: 2020-12-09
+Version: 2.41.2
+Date: 2021-04-29
 Author: Weijun Luo
 Maintainer: Weijun Luo <luo_weijun@yahoo.com>
 Description: GAGE is a published method for gene set (enrichment or GSEA) or pathway analysis. GAGE is generally applicable independent of microarray or RNA-Seq data attributes including sample sizes, experimental designs, assay platforms, and other types of heterogeneity, and consistently achieves superior performance over other frequently used methods. In gage package, we provide functions for basic GAGE analysis, result processing and presentation. We have also built pipeline routines for of multiple GAGE analyses in a batch, comparison between parallel analyses, and combined analysis of heterogeneous data from different sources/studies. In addition, we provide demo microarray data and commonly used gene set data based on KEGG pathways and GO terms. These funtions and data are also useful for gene set analysis using other methods.
@@ -11,6 +11,6 @@ Depends: R (>= 2.10)
 Imports: graph, KEGGREST, AnnotationDbi, GO.db
 Suggests: pathview, gageData, org.Hs.eg.db, hgu133a.db, GSEABase, Rsamtools, GenomicAlignments, TxDb.Hsapiens.UCSC.hg19.knownGene, DESeq2, edgeR, limma
 License: GPL (>=2.0)
-URL: http://www.biomedcentral.com/1471-2105/10/161
+URL: https://github.com/datapplab/gage, http://www.biomedcentral.com/1471-2105/10/161
 Collate: colorpanel.R deComp.R eg2sym.R esset.grp.R essGene.R gageComp.R gage-internal.R gagePipe.R gagePrep.R gage.R gageSum.R geneData.R go.gsets.R greenred.R gs.heatmap.R gs.KSTest.R gs.tTest.R gs.zTest.R heatmap2.R heter.gage.R invalid.R kegg.gsets.R kegg.species.code.R odd.R pairData.R readExpData.R readList.R rownorm.R sigGeneSet.R sym2eg.R vennCounts.R vennDiagram2.R
 LazyLoad: yes

@@ -46,7 +46,9 @@ Weijun Luo, Michael Friedman, Kerby Shedden, Kurt Hankenson, and Peter Woolf. GA
 
 \section{Quick start with demo data}
 \label{sec:quick}
-This is the most basic use of \Rpackage{gage}, please check the full description below for more information. If you have difficulties in using R in general, you may use the \href{https://pathview.uncc.edu/}{Pathview Web server: pathview.uncc.edu}. \href{https://pathview.uncc.edu/}{The server} implemented GAGE based pathway analysis and Pathview based data visualization in \href{https://pathview.uncc.edu/example4}{a comprehensive pathway analysis workflow}. Please check \href{https://pathview.uncc.edu/overview}{the overview page} and \href{https://academic.oup.com/nar/article-lookup/doi/10.1093/nar/gkx372}{the NAR web server paper} \citep{luo:etal:2017} for details. 
+This is the most basic use of \Rpackage{gage}, please check the full description below for more information. If you have difficulties in using R in general, you may use the \href{https://pathview.uncc.edu/}{Pathview Web server: pathview.uncc.edu} and \href{https://pathview.uncc.edu/example4}{its comprehensive pathway analysis workflow}.
+
+Note we use the demo gene set data, i.e. \R{kegg.gs} and \R{go.sets.hs}. You can generate up-to-date gene set data using \Rfunction{kegg.gsets} and \Rfunction{go.gsets}. Please check the \hyperref[code:kegg.gsets]{Section Basic Analysis} and the help info on the function for details. Also here we focuse on KEGG pathways, which is good for most regular analyses. If you are interested in working with other major pathway databases, including Reactome, MetaCyc, SMPDB, PANTHER, METACROP etc, you can use \href{https://github.com/datapplab/SBGNview}{\Rpackage{SBGNview}}. Please check \href{https://bioconductor.org/packages/devel/bioc/vignettes/SBGNview/inst/doc/pathway.enrichment.analysis.html}{SBGNview + GAGE based pathway analysis workflow}.
 
 <<synopsis1, echo=TRUE,  eval=FALSE>>=
 library(gage)

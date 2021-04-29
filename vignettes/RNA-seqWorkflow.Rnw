@@ -44,6 +44,8 @@ The workflows cover the most common situations and issues for RNA-Seq data pathw
 
 Note \href{https://pathview.uncc.edu/}{the Pathview Web server} provides a generic yet comprehensive workflow for both regular and integrated pathway analysis of multiple omics data \citep{luo:etal:2017}, as shown in \href{https://pathview.uncc.edu/example4}{Example 4 online}. 
 
+Note here we focuse on KEGG pathways, which is good for most regular analyses. If you are interested in working with other major pathway databases, including Reactome, MetaCyc, SMPDB, PANTHER, METACROP etc, you can use \href{https://github.com/datapplab/SBGNview}{\Rpackage{SBGNview}}. Please check \href{https://bioconductor.org/packages/devel/bioc/vignettes/SBGNview/inst/doc/pathway.enrichment.analysis.html}{SBGNview + GAGE based pathway analysis workflow}.
+
 \section{Cite our work}
 
 Weijun Luo, Michael Friedman, Kerby Shedden, Kurt Hankenson, and Peter Woolf. GAGE: generally applicable gene set enrichment for pathway analysis. BMC Bioinformatics, 2009. \href{http://www.biomedcentral.com/1471-2105/10/161}{doi:10.1186/1471-2105-10-161}.
@@ -113,9 +115,8 @@ sel.l <- cnts.kegg.p$less[, "q.val"] < 0.1 &
 path.ids.l <- rownames(cnts.kegg.p$less)[sel.l]
 path.ids2 <- substr(c(path.ids, path.ids.l), 1, 8)
 library(pathview)
-pv.out.list <- sapply(path.ids2, function(pid) pathview(
-                      gene.data = cnts.d, pathway.id = pid,
-                      species = "hsa"))
+pv.out.list <- pathview(gene.data = cnts.d, pathway.id = path.ids2,
+                      species = "hsa")
 @
 
 \section{The native workflow}
