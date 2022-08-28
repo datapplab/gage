@@ -1,3 +1,12 @@
+VERSION 1.47.1/1.46.1
+-------------
+  
+  o korg now include 8282 KEGG species or 1449 new species beyond 2020.
+  
+  o updated khier to included newly added reference pathways. kegg.gsets
+    can work with 477 pathways now.
+
+
 VERSION 1.41.1/1.40.1
 -------------
   
