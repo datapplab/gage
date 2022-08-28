@@ -1,4 +1,4 @@
-VERSION 1.47.1/1.46.1
+VERSION 2.47.1/2.46.1
 -------------
   
   o korg now include 8282 KEGG species or 1449 new species beyond 2020.
@@ -7,7 +7,7 @@ VERSION 1.47.1/1.46.1
     can work with 477 pathways now.
 
 
-VERSION 1.41.1/1.40.1
+VERSION 2.41.1/2.40.1
 -------------
   
   o korg now include 6833 KEGG species or 1588 new species beyond 2017.

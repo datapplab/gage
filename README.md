@@ -1,8 +1,8 @@
 
 # gage R package
 
-[![](https://img.shields.io/badge/release%20version-2.40.2-blue.svg)](https://www.bioconductor.org/packages/gage)
-[![](https://img.shields.io/badge/devel%20version-2.41.2-green.svg)](https://github.com/datapplab/gage)
+[![](https://img.shields.io/badge/release%20version-2.46.1-blue.svg)](https://www.bioconductor.org/packages/gage)
+[![](https://img.shields.io/badge/devel%20version-2.47.1-green.svg)](https://github.com/datapplab/gage)
 [![](https://img.shields.io/badge/BioC%20since-2009-blue.svg)](https://www.bioconductor.org/packages/gage)
 [![](https://img.shields.io/badge/GitHub%20since-2020-green.svg)](https://github.com/datapplab/gage)
 
